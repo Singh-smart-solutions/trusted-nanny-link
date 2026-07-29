@@ -146,11 +146,11 @@ function BookingPage() {
       if (phone.replace(/\D/g, "").length < 9) return toast.error("Please enter a valid UAE phone");
       if (!address.trim()) return toast.error("Please enter your address");
     }
-    setStep((s) => Math.min(4, (s + 1) as Step));
+    setStep((s) => Math.min(4, s + 1) as Step);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function back() {
-    setStep((s) => Math.max(0, (s - 1) as Step));
+    setStep((s) => Math.max(0, s - 1) as Step);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
