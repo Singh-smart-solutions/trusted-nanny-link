@@ -36,7 +36,7 @@ export const Route = createFileRoute("/")({
       { title: "Book a Nanny in the UAE — Yalla Nanny" },
       { name: "description", content: "Trusted, insured nannies across Dubai, Abu Dhabi & Sharjah. Book by the hour. Confirm with a 50% advance in AED." },
       { property: "og:title", content: "Book a Nanny in the UAE — Yalla Nanny" },
-      { property: "og:description", content: "Trusted, insured nannies across the UAE. Confirm with a 50% advance." },
+      { property: "og:description", content: "Trusted, insured nannies across Dubai, Abu Dhabi & Sharjah. Book by the hour. Confirm with a 50% advance in AED." },
     ],
   }),
   component: BookingPage,

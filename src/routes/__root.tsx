@@ -78,14 +78,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Yalla Nanny — Trusted Nannies On-Demand in the UAE" },
-      { name: "description", content: "Book verified, insured nannies across Dubai, Abu Dhabi & Sharjah. Pay 50% to confirm, settle the rest after your session." },
+      { title: "Book a Nanny in the UAE — Yalla Nanny" },
+      { name: "description", content: "Trusted, insured nannies across Dubai, Abu Dhabi & Sharjah. Book by the hour. Confirm with a 50% advance in AED." },
       { name: "author", content: "Yalla Nanny" },
-      { property: "og:title", content: "Yalla Nanny — Trusted Nannies On-Demand in the UAE" },
-      { property: "og:description", content: "Book verified nannies by the hour across the UAE. Instant confirmation with a 50% advance." },
+      { property: "og:title", content: "Book a Nanny in the UAE — Yalla Nanny" },
+      { property: "og:description", content: "Trusted, insured nannies across Dubai, Abu Dhabi & Sharjah. Book by the hour. Confirm with a 50% advance in AED." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@YallaNanny" },
+      { name: "twitter:title", content: "Book a Nanny in the UAE — Yalla Nanny" },
+      { name: "twitter:description", content: "Trusted, insured nannies across Dubai, Abu Dhabi & Sharjah. Book by the hour. Confirm with a 50% advance in AED." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9ebcc8c8-e0d1-4978-9466-3ee0736a6d30/id-preview-7746b746--5b354510-db6a-4583-bafb-999f3a2db8e9.lovable.app-1785330654347.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9ebcc8c8-e0d1-4978-9466-3ee0736a6d30/id-preview-7746b746--5b354510-db6a-4583-bafb-999f3a2db8e9.lovable.app-1785330654347.png" },
     ],
     links: [
       {
