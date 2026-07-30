@@ -1,0 +1,119 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-sand: var(--sand);
+}
+
+:root {
+  --radius: 1rem;
+  /* Warm sand cream */
+  --background: oklch(0.977 0.014 82);
+  --foreground: oklch(0.22 0.03 160);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.03 160);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.03 160);
+
+  /* Deep emerald — trust, calm */
+  --primary: oklch(0.38 0.07 165);
+  --primary-foreground: oklch(0.98 0.014 82);
+
+  --secondary: oklch(0.94 0.02 82);
+  --secondary-foreground: oklch(0.28 0.04 160);
+
+  --muted: oklch(0.94 0.015 82);
+  --muted-foreground: oklch(0.48 0.02 160);
+
+  /* Terracotta accent */
+  --accent: oklch(0.72 0.13 40);
+  --accent-foreground: oklch(0.99 0.01 82);
+
+  /* Gold — premium accent for CTAs / prices */
+  --gold: oklch(0.78 0.14 78);
+  --gold-foreground: oklch(0.24 0.04 160);
+
+  --sand: oklch(0.93 0.03 82);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.98 0.01 82);
+  --border: oklch(0.9 0.02 82);
+  --input: oklch(0.9 0.02 82);
+  --ring: oklch(0.38 0.07 165);
+}
+
+.dark {
+  --background: oklch(0.19 0.02 165);
+  --foreground: oklch(0.97 0.014 82);
+  --card: oklch(0.24 0.03 165);
+  --card-foreground: oklch(0.97 0.014 82);
+  --popover: oklch(0.24 0.03 165);
+  --popover-foreground: oklch(0.97 0.014 82);
+  --primary: oklch(0.78 0.14 78);
+  --primary-foreground: oklch(0.22 0.03 160);
+  --secondary: oklch(0.28 0.03 165);
+  --secondary-foreground: oklch(0.97 0.014 82);
+  --muted: oklch(0.28 0.03 165);
+  --muted-foreground: oklch(0.7 0.02 82);
+  --accent: oklch(0.72 0.13 40);
+  --accent-foreground: oklch(0.99 0.01 82);
+  --gold: oklch(0.78 0.14 78);
+  --gold-foreground: oklch(0.22 0.03 160);
+  --sand: oklch(0.28 0.03 165);
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: oklch(0.98 0.01 82);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.78 0.14 78);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
+  }
+}
