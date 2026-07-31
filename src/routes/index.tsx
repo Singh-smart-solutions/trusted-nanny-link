@@ -43,60 +43,16 @@ export const Route = createFileRoute("/")({
 });
 
 type Nanny = {
-  id: string;
   name: string;
-  origin: string;
   rate: number; // AED/hour
-  rating: number;
-  reviews: number;
-  years: number;
-  langs: string[];
-  skills: string[];
-  initials: string;
-  tint: string;
 };
 
-const NANNIES: Nanny[] = [
-  {
-    id: "aisha",
-    name: "Aisha M.",
-    origin: "Filipino, based in Dubai Marina",
-    rate: 55,
-    rating: 4.9,
-    reviews: 214,
-    years: 8,
-    langs: ["English", "Tagalog"],
-    skills: ["Newborn care", "Meal prep", "DHA First-Aid"],
-    initials: "AM",
-    tint: "bg-[oklch(0.9_0.04_40)]",
-  },
-  {
-    id: "fatima",
-    name: "Fatima K.",
-    origin: "Egyptian, based in Al Reem, Abu Dhabi",
-    rate: 65,
-    rating: 5.0,
-    reviews: 138,
-    years: 6,
-    langs: ["Arabic", "English"],
-    skills: ["Toddlers", "Quran tutoring", "Homework help"],
-    initials: "FK",
-    tint: "bg-[oklch(0.9_0.04_165)]",
-  },
-  {
-    id: "grace",
-    name: "Grace O.",
-    origin: "Kenyan, based in JVC, Dubai",
-    rate: 45,
-    rating: 4.8,
-    reviews: 302,
-    years: 4,
-    langs: ["English", "Swahili"],
-    skills: ["Multiple kids", "Creative play", "Light cooking"],
-    initials: "GO",
-    tint: "bg-[oklch(0.9_0.04_78)]",
-  },
-];
+// Guests don't pick a profile — we assign the best available verified nanny.
+const HOUSE_NANNY: Nanny = {
+  name: "Verified Yalla Nanny",
+  rate: 55,
+};
+
 
 const EMIRATES = ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah", "Umm Al Quwain"];
 
@@ -112,7 +68,7 @@ type Step = 0 | 1 | 2 | 3 | 4;
 
 function BookingPage() {
   const [step, setStep] = useState<Step>(0);
-  const [nannyId, setNannyId] = useState<string>(NANNIES[0].id);
+  const nanny = HOUSE_NANNY;
   const [date, setDate] = useState<string>(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState<string>("09:00");
   const [duration, setDuration] = useState<number>(4);
@@ -126,7 +82,7 @@ function BookingPage() {
   const [processing, setProcessing] = useState(false);
   const [bookingRef, setBookingRef] = useState<string>("");
 
-  const nanny = useMemo(() => NANNIES.find((n) => n.id === nannyId)!, [nannyId]);
+  
   const subtotal = nanny.rate * duration;
   const vat = Math.round(subtotal * 0.05);
   const total = subtotal + vat;
@@ -139,7 +95,7 @@ function BookingPage() {
   );
 
   function next() {
-    if (step === 0 && !nannyId) return toast.error("Please choose a nanny");
+    
     if (step === 1 && (!date || !startTime || !duration)) return toast.error("Please pick date, time and duration");
     if (step === 2) {
       if (!name.trim()) return toast.error("Please enter your name");
@@ -173,13 +129,12 @@ function BookingPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="mx-auto max-w-5xl px-4 pb-16 pt-6 md:pt-10">
-        {step < 4 && <Stepper step={step} />}
+        {step > 0 && step < 4 && <Stepper step={step} />}
 
-        <div className="mt-6 grid gap-6 md:grid-cols-[1fr_360px]">
+        <div className={cn("mt-6 grid gap-6", step > 0 && step < 4 && "md:grid-cols-[1fr_360px]")}>
           <div>
-            {step === 0 && (
-              <StepChooseNanny nannyId={nannyId} setNannyId={setNannyId} />
-            )}
+            {step === 0 && <Landing onStart={() => setStep(1)} />}
+
             {step === 1 && (
               <StepWhen
                 date={date}
@@ -235,9 +190,9 @@ function BookingPage() {
               />
             )}
 
-            {step < 3 && (
+            {step > 0 && step < 3 && (
               <div className="mt-6 flex items-center justify-between gap-3">
-                <Button variant="ghost" onClick={back} disabled={step === 0} className="gap-2">
+                <Button variant="ghost" onClick={back} className="gap-2">
                   <ArrowLeft className="h-4 w-4" /> Back
                 </Button>
                 <Button onClick={next} size="lg" className="gap-2 rounded-full px-6">
@@ -254,7 +209,7 @@ function BookingPage() {
             )}
           </div>
 
-          {step < 4 && (
+          {step > 0 && step < 4 && (
             <Summary
               nanny={nanny}
               date={date}
@@ -268,6 +223,7 @@ function BookingPage() {
               balance={balance}
             />
           )}
+
         </div>
       </main>
       <Footer />
@@ -299,12 +255,13 @@ function Header() {
 }
 
 function Stepper({ step }: { step: Step }) {
-  const labels = ["Nanny", "When", "Details", "Payment"];
+  const labels = ["When", "Details", "Payment"];
   return (
     <ol className="flex items-center gap-2 overflow-x-auto text-xs">
       {labels.map((label, i) => {
-        const active = i === step;
-        const done = i < step;
+        const active = i === step - 1;
+        const done = i < step - 1;
+
         return (
           <li key={label} className="flex items-center gap-2">
             <div
@@ -335,67 +292,47 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
-function StepChooseNanny({ nannyId, setNannyId }: { nannyId: string; setNannyId: (id: string) => void }) {
+function Landing({ onStart }: { onStart: () => void }) {
   return (
-    <section>
-      <SectionHeader
-        eyebrow="Step 1"
-        title="Choose your nanny"
-        subtitle="All caregivers are background-checked, first-aid trained and insured for your peace of mind."
-      />
-      <div className="mt-5 grid gap-3">
-        {NANNIES.map((n) => {
-          const selected = n.id === nannyId;
-          return (
-            <button
-              key={n.id}
-              type="button"
-              onClick={() => setNannyId(n.id)}
-              className={cn(
-                "group text-left transition-all",
-                "rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md",
-                selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-              )}
-            >
-              <div className="flex items-start gap-4">
-                <div className={cn("grid h-14 w-14 shrink-0 place-items-center rounded-full font-serif text-lg font-semibold text-primary", n.tint)}>
-                  {n.initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <h3 className="font-serif text-lg font-semibold">{n.name}</h3>
-                    <Badge variant="secondary" className="gap-1 rounded-full">
-                      <Star className="h-3 w-3 fill-[color:var(--gold)] stroke-0" />
-                      {n.rating} <span className="text-muted-foreground">({n.reviews})</span>
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{n.origin}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {n.years} yrs exp · Speaks {n.langs.join(", ")}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {n.skills.map((s) => (
-                      <span key={s} className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground">from</div>
-                  <div className="font-serif text-xl font-semibold text-primary">
-                    AED {n.rate}
-                  </div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">/ hour</div>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+    <section className="mx-auto max-w-2xl py-6 text-center md:py-14">
+      <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
+        <Sparkles className="mr-1 h-3.5 w-3.5 text-[color:var(--gold)]" /> Trusted childcare across the UAE
+      </Badge>
+      <h1 className="mt-5 font-serif text-4xl font-semibold md:text-5xl">
+        Book a nanny, by the hour
+      </h1>
+      <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground md:text-base">
+        Tell us when you need care and we'll assign a background-checked, first-aid trained
+        and insured nanny. Confirm with a 50% advance in AED.
+      </p>
+
+      <Button
+        size="lg"
+        onClick={onStart}
+        className="mt-7 gap-2 rounded-full px-8 shadow-lg shadow-primary/20"
+      >
+        <Baby className="h-5 w-5" /> Book a Nanny
+      </Button>
+
+      <div className="mt-10 grid gap-3 sm:grid-cols-3">
+        {[
+          { icon: ShieldCheck, title: "Vetted & insured", text: "Background checks and DHA first-aid training." },
+          { icon: Clock, title: "From 2 hours", text: "Daytime, evenings and weekends across all emirates." },
+          { icon: Star, title: "AED 55 / hour", text: "Flat, transparent pricing. 5% VAT included at checkout." },
+        ].map((f) => (
+          <Card key={f.title} className="border-border bg-card">
+            <CardContent className="p-4 text-left">
+              <f.icon className="h-5 w-5 text-primary" />
+              <div className="mt-2 text-sm font-semibold">{f.title}</div>
+              <p className="mt-1 text-xs text-muted-foreground">{f.text}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </section>
   );
 }
+
 
 function StepWhen(props: {
   date: string; setDate: (v: string) => void;
@@ -408,7 +345,7 @@ function StepWhen(props: {
   return (
     <section>
       <SectionHeader
-        eyebrow="Step 2"
+        eyebrow="Step 1"
         title="When do you need us?"
         subtitle="Sessions start from 2 hours. Minimum 4-hour advance booking recommended."
       />
@@ -511,7 +448,7 @@ function StepDetails(props: {
   return (
     <section>
       <SectionHeader
-        eyebrow="Step 3"
+        eyebrow="Step 2"
         title="Where & who"
         subtitle="We share your address with the nanny only after payment is confirmed."
       />
@@ -567,7 +504,7 @@ function StepPayment(props: {
   return (
     <section>
       <SectionHeader
-        eyebrow="Step 4"
+        eyebrow="Step 3"
         title="Secure 50% advance"
         subtitle="Pay half now to confirm your booking. The remaining balance is paid to the nanny at the end of the session."
       />
