@@ -68,7 +68,7 @@ type Step = 0 | 1 | 2 | 3 | 4;
 
 function BookingPage() {
   const [step, setStep] = useState<Step>(0);
-  const [nannyId, setNannyId] = useState<string>(NANNIES[0].id);
+  const nanny = HOUSE_NANNY;
   const [date, setDate] = useState<string>(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState<string>("09:00");
   const [duration, setDuration] = useState<number>(4);
