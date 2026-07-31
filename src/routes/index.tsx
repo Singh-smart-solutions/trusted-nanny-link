@@ -82,7 +82,7 @@ function BookingPage() {
   const [processing, setProcessing] = useState(false);
   const [bookingRef, setBookingRef] = useState<string>("");
 
-  const nanny = useMemo(() => NANNIES.find((n) => n.id === nannyId)!, [nannyId]);
+  
   const subtotal = nanny.rate * duration;
   const vat = Math.round(subtotal * 0.05);
   const total = subtotal + vat;
