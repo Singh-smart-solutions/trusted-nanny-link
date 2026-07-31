@@ -291,67 +291,47 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
-function StepChooseNanny({ nannyId, setNannyId }: { nannyId: string; setNannyId: (id: string) => void }) {
+function Landing({ onStart }: { onStart: () => void }) {
   return (
-    <section>
-      <SectionHeader
-        eyebrow="Step 1"
-        title="Choose your nanny"
-        subtitle="All caregivers are background-checked, first-aid trained and insured for your peace of mind."
-      />
-      <div className="mt-5 grid gap-3">
-        {NANNIES.map((n) => {
-          const selected = n.id === nannyId;
-          return (
-            <button
-              key={n.id}
-              type="button"
-              onClick={() => setNannyId(n.id)}
-              className={cn(
-                "group text-left transition-all",
-                "rounded-2xl border bg-card p-4 shadow-sm hover:shadow-md",
-                selected ? "border-primary ring-2 ring-primary/20" : "border-border",
-              )}
-            >
-              <div className="flex items-start gap-4">
-                <div className={cn("grid h-14 w-14 shrink-0 place-items-center rounded-full font-serif text-lg font-semibold text-primary", n.tint)}>
-                  {n.initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <h3 className="font-serif text-lg font-semibold">{n.name}</h3>
-                    <Badge variant="secondary" className="gap-1 rounded-full">
-                      <Star className="h-3 w-3 fill-[color:var(--gold)] stroke-0" />
-                      {n.rating} <span className="text-muted-foreground">({n.reviews})</span>
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{n.origin}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {n.years} yrs exp · Speaks {n.langs.join(", ")}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {n.skills.map((s) => (
-                      <span key={s} className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground">from</div>
-                  <div className="font-serif text-xl font-semibold text-primary">
-                    AED {n.rate}
-                  </div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">/ hour</div>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+    <section className="mx-auto max-w-2xl py-6 text-center md:py-14">
+      <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
+        <Sparkles className="mr-1 h-3.5 w-3.5 text-[color:var(--gold)]" /> Trusted childcare across the UAE
+      </Badge>
+      <h1 className="mt-5 font-serif text-4xl font-semibold md:text-5xl">
+        Book a nanny, by the hour
+      </h1>
+      <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground md:text-base">
+        Tell us when you need care and we'll assign a background-checked, first-aid trained
+        and insured nanny. Confirm with a 50% advance in AED.
+      </p>
+
+      <Button
+        size="lg"
+        onClick={onStart}
+        className="mt-7 gap-2 rounded-full px-8 shadow-lg shadow-primary/20"
+      >
+        <Baby className="h-5 w-5" /> Book a Nanny
+      </Button>
+
+      <div className="mt-10 grid gap-3 sm:grid-cols-3">
+        {[
+          { icon: ShieldCheck, title: "Vetted & insured", text: "Background checks and DHA first-aid training." },
+          { icon: Clock, title: "From 2 hours", text: "Daytime, evenings and weekends across all emirates." },
+          { icon: Star, title: "AED 55 / hour", text: "Flat, transparent pricing. 5% VAT included at checkout." },
+        ].map((f) => (
+          <Card key={f.title} className="border-border bg-card">
+            <CardContent className="p-4 text-left">
+              <f.icon className="h-5 w-5 text-primary" />
+              <div className="mt-2 text-sm font-semibold">{f.title}</div>
+              <p className="mt-1 text-xs text-muted-foreground">{f.text}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </section>
   );
 }
+
 
 function StepWhen(props: {
   date: string; setDate: (v: string) => void;
