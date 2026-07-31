@@ -255,12 +255,13 @@ function Header() {
 }
 
 function Stepper({ step }: { step: Step }) {
-  const labels = ["Nanny", "When", "Details", "Payment"];
+  const labels = ["When", "Details", "Payment"];
   return (
     <ol className="flex items-center gap-2 overflow-x-auto text-xs">
       {labels.map((label, i) => {
-        const active = i === step;
-        const done = i < step;
+        const active = i === step - 1;
+        const done = i < step - 1;
+
         return (
           <li key={label} className="flex items-center gap-2">
             <div
