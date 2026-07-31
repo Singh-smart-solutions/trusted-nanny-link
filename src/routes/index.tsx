@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+
 import { format, addDays } from "date-fns";
 import {
   CalendarDays,
@@ -29,6 +30,8 @@ import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -111,19 +114,43 @@ function BookingPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function pay() {
+  async function pay() {
     setProcessing(true);
-    setTimeout(() => {
-      const ref = "YN-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const ref = "YN-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+    try {
+      const { error } = await supabase.from("bookings").insert({
+        reference: ref,
+        customer_name: name.trim().slice(0, 100),
+        customer_phone: phone.trim().slice(0, 30),
+        emirate,
+        address: address.trim().slice(0, 300),
+        notes: notes.trim().slice(0, 500) || null,
+        booking_date: date,
+        start_time: startTime,
+        duration_hours: duration,
+        kids,
+        nanny_name: nanny.name,
+        hourly_rate: nanny.rate,
+        subtotal,
+        vat,
+        total,
+        advance_paid: advance,
+        balance_due: balance,
+      });
+      if (error) throw error;
       setBookingRef(ref);
-      setProcessing(false);
       setStep(4);
       toast.success(`Advance of AED ${advance} received`, {
-        description: `Booking ${ref} confirmed`,
+        description: `Booking ${ref} sent to the team for confirmation`,
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 1400);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save your booking");
+    } finally {
+      setProcessing(false);
+    }
   }
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -727,7 +754,9 @@ function Footer() {
         <div className="flex items-center gap-4">
           <span>Trade Licence #123456</span>
           <span>support@yallananny.ae</span>
+          <Link to="/auth" className="underline-offset-4 hover:underline">Owner login</Link>
         </div>
+
       </div>
     </footer>
   );
