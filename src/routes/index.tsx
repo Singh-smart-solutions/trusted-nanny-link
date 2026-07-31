@@ -191,9 +191,9 @@ function BookingPage() {
               />
             )}
 
-            {step < 3 && (
+            {step > 0 && step < 3 && (
               <div className="mt-6 flex items-center justify-between gap-3">
-                <Button variant="ghost" onClick={back} disabled={step === 0} className="gap-2">
+                <Button variant="ghost" onClick={back} className="gap-2">
                   <ArrowLeft className="h-4 w-4" /> Back
                 </Button>
                 <Button onClick={next} size="lg" className="gap-2 rounded-full px-6">
@@ -210,7 +210,7 @@ function BookingPage() {
             )}
           </div>
 
-          {step < 4 && (
+          {step > 0 && step < 4 && (
             <Summary
               nanny={nanny}
               date={date}
@@ -224,6 +224,7 @@ function BookingPage() {
               balance={balance}
             />
           )}
+
         </div>
       </main>
       <Footer />
