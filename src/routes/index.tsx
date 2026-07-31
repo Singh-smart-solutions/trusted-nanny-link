@@ -43,60 +43,16 @@ export const Route = createFileRoute("/")({
 });
 
 type Nanny = {
-  id: string;
   name: string;
-  origin: string;
   rate: number; // AED/hour
-  rating: number;
-  reviews: number;
-  years: number;
-  langs: string[];
-  skills: string[];
-  initials: string;
-  tint: string;
 };
 
-const NANNIES: Nanny[] = [
-  {
-    id: "aisha",
-    name: "Aisha M.",
-    origin: "Filipino, based in Dubai Marina",
-    rate: 55,
-    rating: 4.9,
-    reviews: 214,
-    years: 8,
-    langs: ["English", "Tagalog"],
-    skills: ["Newborn care", "Meal prep", "DHA First-Aid"],
-    initials: "AM",
-    tint: "bg-[oklch(0.9_0.04_40)]",
-  },
-  {
-    id: "fatima",
-    name: "Fatima K.",
-    origin: "Egyptian, based in Al Reem, Abu Dhabi",
-    rate: 65,
-    rating: 5.0,
-    reviews: 138,
-    years: 6,
-    langs: ["Arabic", "English"],
-    skills: ["Toddlers", "Quran tutoring", "Homework help"],
-    initials: "FK",
-    tint: "bg-[oklch(0.9_0.04_165)]",
-  },
-  {
-    id: "grace",
-    name: "Grace O.",
-    origin: "Kenyan, based in JVC, Dubai",
-    rate: 45,
-    rating: 4.8,
-    reviews: 302,
-    years: 4,
-    langs: ["English", "Swahili"],
-    skills: ["Multiple kids", "Creative play", "Light cooking"],
-    initials: "GO",
-    tint: "bg-[oklch(0.9_0.04_78)]",
-  },
-];
+// Guests don't pick a profile — we assign the best available verified nanny.
+const HOUSE_NANNY: Nanny = {
+  name: "Verified Yalla Nanny",
+  rate: 55,
+};
+
 
 const EMIRATES = ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah", "Umm Al Quwain"];
 
