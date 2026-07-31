@@ -129,13 +129,12 @@ function BookingPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="mx-auto max-w-5xl px-4 pb-16 pt-6 md:pt-10">
-        {step < 4 && <Stepper step={step} />}
+        {step > 0 && step < 4 && <Stepper step={step} />}
 
-        <div className="mt-6 grid gap-6 md:grid-cols-[1fr_360px]">
+        <div className={cn("mt-6 grid gap-6", step > 0 && step < 4 && "md:grid-cols-[1fr_360px]")}>
           <div>
-            {step === 0 && (
-              <StepChooseNanny nannyId={nannyId} setNannyId={setNannyId} />
-            )}
+            {step === 0 && <Landing onStart={() => setStep(1)} />}
+
             {step === 1 && (
               <StepWhen
                 date={date}
