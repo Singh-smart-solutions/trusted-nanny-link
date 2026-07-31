@@ -345,7 +345,7 @@ function StepWhen(props: {
   return (
     <section>
       <SectionHeader
-        eyebrow="Step 2"
+        eyebrow="Step 1"
         title="When do you need us?"
         subtitle="Sessions start from 2 hours. Minimum 4-hour advance booking recommended."
       />
@@ -448,7 +448,7 @@ function StepDetails(props: {
   return (
     <section>
       <SectionHeader
-        eyebrow="Step 3"
+        eyebrow="Step 2"
         title="Where & who"
         subtitle="We share your address with the nanny only after payment is confirmed."
       />
@@ -504,7 +504,7 @@ function StepPayment(props: {
   return (
     <section>
       <SectionHeader
-        eyebrow="Step 4"
+        eyebrow="Step 3"
         title="Secure 50% advance"
         subtitle="Pay half now to confirm your booking. The remaining balance is paid to the nanny at the end of the session."
       />
