@@ -95,7 +95,7 @@ function BookingPage() {
   );
 
   function next() {
-    if (step === 0 && !nannyId) return toast.error("Please choose a nanny");
+    
     if (step === 1 && (!date || !startTime || !duration)) return toast.error("Please pick date, time and duration");
     if (step === 2) {
       if (!name.trim()) return toast.error("Please enter your name");
