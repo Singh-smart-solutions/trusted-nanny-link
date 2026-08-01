@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Baby, Lock, LogIn } from "lucide-react";
+import { Baby, Lock, LogIn, Sparkles } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { claimOwnerRole } from "@/lib/owner.functions";
@@ -36,6 +36,47 @@ function AuthPage() {
       if (data.session) navigate({ to: "/owner", replace: true });
     });
   }, [navigate]);
+
+  // Demo access: sign in with one click, no account to create. Reuses a shared
+  // demo owner account so every demo session lands on the same dashboard.
+  async function demoLogin() {
+    setBusy(true);
+    try {
+      const demoEmail = "demo-owner@yallananny.ae";
+      const demoPassword = "demo-owner-1234";
+      let signedIn = false;
+
+      const signIn = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword,
+      });
+      if (!signIn.error && signIn.data.session) {
+        signedIn = true;
+      } else {
+        const signUp = await supabase.auth.signUp({ email: demoEmail, password: demoPassword });
+        if (!signUp.error && signUp.data.session) signedIn = true;
+      }
+
+      // Last resort (only works while no owner exists yet).
+      if (!signedIn) {
+        const anon = await supabase.auth.signInAnonymously();
+        if (!anon.error && anon.data.session) signedIn = true;
+      }
+
+      if (!signedIn) {
+        throw new Error(
+          "One-click demo login needs email confirmation turned off (or anonymous sign-ins enabled) in Supabase Auth settings.",
+        );
+      }
+
+      await claimOwnerRole();
+      navigate({ to: "/owner", replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start the demo session");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,6 +129,25 @@ function AuthPage() {
 
         <Card>
           <CardContent className="p-5">
+            <Button
+              type="button"
+              onClick={demoLogin}
+              disabled={busy}
+              className="w-full gap-2 rounded-full"
+            >
+              <Sparkles className="h-4 w-4" />
+              {busy ? "Please wait…" : "Log in to owner dashboard"}
+            </Button>
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              One click — no account needed.
+            </p>
+
+            <div className="my-4 flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              or sign in with email
+              <span className="h-px flex-1 bg-border" />
+            </div>
+
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <Label className="mb-2 block text-sm">Email</Label>

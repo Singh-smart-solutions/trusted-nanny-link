@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   Baby,
@@ -86,8 +86,26 @@ function OwnerDashboard() {
       if (error) throw error;
       return (data ?? []) as Booking[];
     },
-    refetchInterval: 20000,
+    refetchInterval: 8000,
   });
+
+  // Announce brand-new booking requests as they arrive, with the client's details.
+  const seenIds = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const data = bookingsQuery.data;
+    if (!data) return;
+    if (seenIds.current === null) {
+      seenIds.current = new Set(data.map((b) => b.id));
+      return;
+    }
+    for (const b of data) {
+      if (seenIds.current.has(b.id)) continue;
+      seenIds.current.add(b.id);
+      toast(`New booking request — ${b.customer_name}`, {
+        description: `${b.emirate} · ${format(new Date(b.booking_date), "EEE d MMM")} at ${b.start_time} · ${b.address}`,
+      });
+    }
+  }, [bookingsQuery.data]);
 
   const settingsQuery = useQuery({
     queryKey: ["owner-settings"],
