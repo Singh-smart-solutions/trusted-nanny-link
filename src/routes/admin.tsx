@@ -1,11 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowLeft,
   Baby,
   CheckCircle2,
+  Inbox,
+  LayoutList,
+  Menu,
   MessageCircle,
+  Search,
   UserCheck,
   XCircle,
 } from "lucide-react";
@@ -28,6 +32,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
@@ -45,7 +56,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminDashboard,
 });
 
-type Filter = "all" | "pending" | "confirmed" | "declined";
+type View = "incoming" | "all";
 
 function digitsOnly(v: string) {
   return v.replace(/\D/g, "");
@@ -53,7 +64,9 @@ function digitsOnly(v: string) {
 
 function AdminDashboard() {
   const [bookings, setBookings] = useState<DemoBooking[]>([]);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [view, setView] = useState<View>("incoming");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [assignFor, setAssignFor] = useState<DemoBooking | null>(null);
   const seenIds = useRef<Set<string> | null>(null);
 
@@ -85,79 +98,128 @@ function AdminDashboard() {
     setBookings(updateDemoBooking(booking.id, patch));
     toast.success(
       status === "confirmed"
-        ? `Booking ${booking.reference} confirmed${assignee ? ` · ${assignee}` : ""}`
+        ? `Confirmed · ${assignee ?? booking.nanny_name}`
         : `Booking ${booking.reference} declined`,
     );
   }
 
-  const counts = {
-    all: bookings.length,
-    pending: bookings.filter((b) => b.status === "pending").length,
-    confirmed: bookings.filter((b) => b.status === "confirmed").length,
-    declined: bookings.filter((b) => b.status === "declined").length,
-  };
-  const visibleBookings =
-    filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
+  const pending = useMemo(
+    () => bookings.filter((b) => b.status === "pending"),
+    [bookings],
+  );
+
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return bookings;
+    return bookings.filter((b) => {
+      const hay = `${b.customer_name} ${b.booking_date} ${format(
+        new Date(b.booking_date),
+        "EEE d MMMM yyyy",
+      )} ${b.emirate} ${b.reference}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [bookings, query]);
+
+  function go(v: View) {
+    setView(v);
+    setMenuOpen(false);
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/60 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
-              <Baby className="h-5 w-5" />
-            </div>
-            <div className="leading-tight">
-              <div className="font-serif text-lg font-semibold">Owner dashboard</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                {counts.pending} pending {counts.pending === 1 ? "booking" : "bookings"}
-              </div>
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <SheetHeader className="border-b border-border/60 p-4 text-left">
+                  <SheetTitle className="flex items-center gap-2">
+                    <div className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <Baby className="h-4 w-4" />
+                    </div>
+                    Yalla Nanny
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="p-2">
+                  <MenuItem
+                    active={view === "incoming"}
+                    icon={Inbox}
+                    label="Incoming requests"
+                    badge={pending.length || undefined}
+                    onClick={() => go("incoming")}
+                  />
+                  <MenuItem
+                    active={view === "all"}
+                    icon={LayoutList}
+                    label="All bookings"
+                    badge={bookings.length || undefined}
+                    onClick={() => go("all")}
+                  />
+                  <Link
+                    to="/"
+                    className="mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Back to site
+                  </Link>
+                </nav>
+              </SheetContent>
+            </Sheet>
+            <div className="font-serif text-lg font-semibold">
+              {view === "incoming" ? "Incoming requests" : "All bookings"}
             </div>
           </div>
-          <Button asChild variant="ghost" size="sm" className="gap-2">
-            <Link to="/">
-              <ArrowLeft className="h-4 w-4" /> Back to site
-            </Link>
-          </Button>
+          {view === "incoming" && pending.length > 0 && (
+            <Badge className="rounded-full bg-primary text-primary-foreground">{pending.length} new</Badge>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1">
-          {([
-            ["all", "All"],
-            ["pending", "Pending"],
-            ["confirmed", "Confirmed"],
-            ["declined", "Declined"],
-          ] as [Filter, string][]).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFilter(key)}
-              className={cn(
-                "shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors",
-                filter === key
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:bg-secondary",
-              )}
-            >
-              {label} ({counts[key]})
-            </button>
-          ))}
-        </div>
-
-        {visibleBookings.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No {filter === "all" ? "" : filter} bookings.</p>
+      <main className="mx-auto max-w-2xl px-4 py-6">
+        {view === "incoming" ? (
+          pending.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+              {pending.map((b) => (
+                <BookingRow
+                  key={b.id}
+                  booking={b}
+                  onAssign={() => setAssignFor(b)}
+                  onDecline={() => setStatus(b, "declined")}
+                />
+              ))}
+            </div>
+          )
         ) : (
-          <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-            {visibleBookings.map((b) => (
-              <BookingRow
-                key={b.id}
-                booking={b}
-                onAssign={() => setAssignFor(b)}
-                onDecline={() => setStatus(b, "declined")}
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name or date…"
+                className="h-11 pl-9"
               />
-            ))}
+            </div>
+            {searchResults.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No bookings match “{query}”.</p>
+            ) : (
+              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                {searchResults.map((b) => (
+                  <BookingRow
+                    key={b.id}
+                    booking={b}
+                    onAssign={() => setAssignFor(b)}
+                    onDecline={() => setStatus(b, "declined")}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -171,6 +233,59 @@ function AdminDashboard() {
         }}
       />
     </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="rounded-xl border border-border bg-card px-6 py-16 text-center">
+      <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-primary">
+        <CheckCircle2 className="h-6 w-6" />
+      </div>
+      <h2 className="mt-4 font-serif text-lg font-semibold">You&apos;re all caught up</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        No new requests right now. New bookings appear here automatically.
+      </p>
+    </div>
+  );
+}
+
+function MenuItem({
+  active,
+  icon: Icon,
+  label,
+  badge,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ElementType;
+  label: string;
+  badge?: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors",
+        active ? "bg-primary text-primary-foreground" : "hover:bg-secondary",
+      )}
+    >
+      <span className="flex items-center gap-3">
+        <Icon className="h-4 w-4" /> {label}
+      </span>
+      {badge !== undefined && (
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            active ? "bg-primary-foreground/20" : "bg-secondary",
+          )}
+        >
+          {badge}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -191,37 +306,29 @@ function BookingRow({
     : null;
 
   return (
-    <div className="p-3.5">
+    <div className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold">{b.customer_name}</span>
             <StatusBadge status={b.status} />
           </div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+          <div className="mt-1 truncate text-xs text-muted-foreground">
             {format(new Date(b.booking_date), "EEE d MMM")} · {b.start_time} · {b.duration_hours} hrs
             {" · "}
-            {b.kids} {b.kids === "1" ? "child" : "kids"}
+            {b.emirate}
           </div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">
-            {b.emirate} — {b.address}
-          </div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            {b.customer_phone} · Ref {b.reference}
-          </div>
+          <div className="truncate text-xs text-muted-foreground">{b.address}</div>
           {b.status === "confirmed" && (
             <div className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
               <UserCheck className="h-3.5 w-3.5" /> {b.nanny_name}
             </div>
           )}
         </div>
-        <div className="shrink-0 text-right">
-          <div className="text-sm font-semibold">AED {b.total}</div>
-          <div className="text-[10px] text-muted-foreground">adv {b.advance_paid}</div>
-        </div>
+        <div className="shrink-0 text-right text-sm font-semibold">AED {b.total}</div>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         {b.status === "pending" && (
           <>
             <Button size="sm" onClick={onAssign} className="h-8 gap-1.5 rounded-full px-3 text-xs">
@@ -238,12 +345,7 @@ function BookingRow({
           </>
         )}
         {waLink && (
-          <Button
-            asChild
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1.5 rounded-full px-3 text-xs"
-          >
+          <Button asChild size="sm" variant="ghost" className="h-8 gap-1.5 rounded-full px-3 text-xs">
             <a href={waLink} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
             </a>
