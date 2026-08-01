@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Baby, CheckCircle2, MessageSquarePlus, Star } from "lucide-react";
+import { ArrowLeft, Baby, CheckCircle2, CreditCard, MessageSquarePlus, Star } from "lucide-react";
 import { toast } from "sonner";
 
-import { getDemoBookings, type DemoBooking } from "@/lib/demo-bookings";
+import { getDemoBookings, updateDemoBooking, type DemoBooking } from "@/lib/demo-bookings";
 import { addDemoFeedback } from "@/lib/demo-feedback";
+import { getSavedCard, type SavedCard } from "@/lib/saved-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -39,10 +40,17 @@ function MyBookings() {
   const [bookings, setBookings] = useState<DemoBooking[]>([]);
   const [reviewFor, setReviewFor] = useState<DemoBooking | null>(null);
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
+  const [savedCard, setSavedCard] = useState<SavedCard | null>(null);
 
   useEffect(() => {
     setBookings(getDemoBookings().filter((b) => b.mine));
+    setSavedCard(getSavedCard());
   }, []);
+
+  function payBalance(b: DemoBooking) {
+    setBookings(updateDemoBooking(b.id, { balance_paid: true }).filter((x) => x.mine));
+    toast.success(`Balance of AED ${b.balance_due} paid — thank you!`);
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,7 +90,9 @@ function MyBookings() {
                 key={b.id}
                 booking={b}
                 submitted={submitted.has(b.id)}
+                savedCard={savedCard}
                 onReview={() => setReviewFor(b)}
+                onPayBalance={() => payBalance(b)}
               />
             ))}
           </div>
@@ -114,11 +124,15 @@ function MyBookings() {
 function ClientBookingRow({
   booking: b,
   submitted,
+  savedCard,
   onReview,
+  onPayBalance,
 }: {
   booking: DemoBooking;
   submitted: boolean;
+  savedCard: SavedCard | null;
   onReview: () => void;
+  onPayBalance: () => void;
 }) {
   return (
     <div className="p-4">
@@ -141,6 +155,31 @@ function ClientBookingRow({
         <div className="mt-2 flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary">
           <CheckCircle2 className="h-3.5 w-3.5" />
           Confirmed · Your nanny: {b.nanny_name}
+        </div>
+      )}
+
+      {b.status === "confirmed" && (
+        <div className="mt-2">
+          {b.balance_paid ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Paid in full
+            </span>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <Button
+                size="sm"
+                onClick={onPayBalance}
+                className="h-8 w-fit gap-1.5 rounded-full px-3 text-xs"
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                Pay remaining AED {b.balance_due}
+                {savedCard ? ` · •••• ${savedCard.last4}` : ""}
+              </Button>
+              <span className="text-[11px] text-muted-foreground">
+                Pay the balance after the session{savedCard ? " — one click with your saved card" : ""}.
+              </span>
+            </div>
+          )}
         </div>
       )}
       {b.status === "pending" && (

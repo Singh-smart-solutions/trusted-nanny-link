@@ -26,6 +26,8 @@ export type DemoBooking = {
   // True for bookings made by the current visitor (shown on "My bookings").
   // Seeded sample bookings from other customers are only shown to the owner.
   mine?: boolean;
+  // True once the remaining balance has been paid.
+  balance_paid?: boolean;
 };
 
 const KEY = "yn_demo_bookings_v2";

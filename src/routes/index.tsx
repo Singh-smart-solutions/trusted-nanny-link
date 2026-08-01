@@ -37,6 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { addDemoBooking } from "@/lib/demo-bookings";
 import { addDemoFeedback } from "@/lib/demo-feedback";
 import { getSavedClient, saveClient, clearSavedClient } from "@/lib/saved-client";
+import { getSavedCard, saveCard, clearSavedCard } from "@/lib/saved-card";
 import { Checkbox } from "@/components/ui/checkbox";
 
 
@@ -92,6 +93,8 @@ function BookingPage() {
   const [processing, setProcessing] = useState(false);
   const [bookingRef, setBookingRef] = useState<string>("");
   const [saveDetails, setSaveDetails] = useState(false);
+  const [cardNumber, setCardNumber] = useState<string>("");
+  const [saveCardDetails, setSaveCardDetails] = useState(false);
 
   // Pre-fill contact & address from a previous booking, if the visitor saved them.
   useEffect(() => {
@@ -103,6 +106,7 @@ function BookingPage() {
       setAddress(saved.address);
       setSaveDetails(true);
     }
+    if (getSavedCard()) setSaveCardDetails(true);
   }, []);
 
 
@@ -138,6 +142,14 @@ function BookingPage() {
         saveClient({ name: name.trim(), phone: phone.trim(), emirate, address: address.trim() });
       } else {
         clearSavedClient();
+      }
+
+      // Remember (or forget) a card for one-click balance payment later.
+      if (saveCardDetails) {
+        const digits = cardNumber.replace(/\D/g, "");
+        saveCard({ brand: "Card", last4: digits.slice(-4) || "4242" });
+      } else {
+        clearSavedCard();
       }
 
       // Save to the local demo store so the booking shows up in the owner
@@ -246,6 +258,10 @@ function BookingPage() {
                 balance={balance}
                 processing={processing}
                 onPay={pay}
+                cardNumber={cardNumber}
+                setCardNumber={setCardNumber}
+                saveCardDetails={saveCardDetails}
+                setSaveCardDetails={setSaveCardDetails}
               />
             )}
             {step === 4 && (
@@ -600,8 +616,12 @@ function StepPayment(props: {
   balance: number;
   processing: boolean;
   onPay: () => void;
+  cardNumber: string;
+  setCardNumber: (v: string) => void;
+  saveCardDetails: boolean;
+  setSaveCardDetails: (v: boolean) => void;
 }) {
-  const { payMethod, setPayMethod, advance, balance, processing, onPay } = props;
+  const { payMethod, setPayMethod, advance, balance, processing, onPay, cardNumber, setCardNumber, saveCardDetails, setSaveCardDetails } = props;
   return (
     <section>
       <SectionHeader
@@ -655,7 +675,12 @@ function StepPayment(props: {
         <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-card p-4">
           <div>
             <Label className="mb-1.5 block text-xs">Card number</Label>
-            <Input placeholder="4242 4242 4242 4242" inputMode="numeric" />
+            <Input
+              value={cardNumber}
+              onChange={(e) => setCardNumber(e.target.value)}
+              placeholder="4242 4242 4242 4242"
+              inputMode="numeric"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -671,6 +696,13 @@ function StepPayment(props: {
             <Label className="mb-1.5 block text-xs">Name on card</Label>
             <Input placeholder="As shown on card" />
           </div>
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+            <Checkbox
+              checked={saveCardDetails}
+              onCheckedChange={(v) => setSaveCardDetails(v === true)}
+            />
+            <span>Save this card for one-click balance payment</span>
+          </label>
         </div>
       )}
 
