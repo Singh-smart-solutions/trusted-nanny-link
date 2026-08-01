@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Phone,
   Save,
+  UserCheck,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,7 +25,34 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
+// Team members a booking can be assigned to on acceptance.
+const TEAM = [
+  "Maria Santos",
+  "Grace Adeyemi",
+  "Anna Cruz",
+  "Divya Nair",
+  "Fatima Noor",
+  "Jenny Rose",
+];
+
+type Filter = "all" | "pending" | "confirmed" | "declined";
 
 export const Route = createFileRoute("/_authenticated/owner")({
   head: () => ({
@@ -69,6 +97,7 @@ function OwnerDashboard() {
   const queryClient = useQueryClient();
   const [whatsapp, setWhatsapp] = useState("");
   const [savingNumber, setSavingNumber] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
     claimOwnerRole()
@@ -142,10 +171,15 @@ function OwnerDashboard() {
     settingsQuery.refetch();
   }
 
-  async function setStatus(booking: Booking, status: "confirmed" | "declined") {
-    const { error } = await supabase.from("bookings").update({ status }).eq("id", booking.id);
+  async function setStatus(booking: Booking, status: "confirmed" | "declined", assignee?: string) {
+    const update = assignee ? { status, nanny_name: assignee } : { status };
+    const { error } = await supabase.from("bookings").update(update).eq("id", booking.id);
     if (error) return toast.error(error.message);
-    toast.success(status === "confirmed" ? `Booking ${booking.reference} confirmed` : `Booking ${booking.reference} declined`);
+    toast.success(
+      status === "confirmed"
+        ? `Booking ${booking.reference} confirmed${assignee ? ` · assigned to ${assignee}` : ""}`
+        : `Booking ${booking.reference} declined`,
+    );
     bookingsQuery.refetch();
   }
 
@@ -158,7 +192,15 @@ function OwnerDashboard() {
 
   const ownerNumber = digitsOnly(settingsQuery.data?.whatsapp_number ?? "");
   const bookings = bookingsQuery.data ?? [];
-  const pending = bookings.filter((b) => b.status === "pending").length;
+  const counts = {
+    all: bookings.length,
+    pending: bookings.filter((b) => b.status === "pending").length,
+    confirmed: bookings.filter((b) => b.status === "confirmed").length,
+    declined: bookings.filter((b) => b.status === "declined").length,
+  };
+  const pending = counts.pending;
+  const visibleBookings =
+    filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
 
   return (
     <div className="min-h-screen bg-background">
@@ -204,6 +246,34 @@ function OwnerDashboard() {
           </CardContent>
         </Card>
 
+        <div>
+          <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+            <CalendarDays className="h-4 w-4 text-primary" /> All bookings
+          </div>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {([
+              ["all", "All"],
+              ["pending", "Pending"],
+              ["confirmed", "Confirmed"],
+              ["declined", "Declined"],
+            ] as [Filter, string][]).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={cn(
+                  "shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  filter === key
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card hover:bg-secondary",
+                )}
+              >
+                {label} ({counts[key]})
+              </button>
+            ))}
+          </div>
+        </div>
+
         {bookingsQuery.isLoading && (
           <p className="text-sm text-muted-foreground">Loading bookings…</p>
         )}
@@ -215,14 +285,17 @@ function OwnerDashboard() {
         {!bookingsQuery.isLoading && bookings.length === 0 && (
           <p className="text-sm text-muted-foreground">No bookings yet.</p>
         )}
+        {!bookingsQuery.isLoading && bookings.length > 0 && visibleBookings.length === 0 && (
+          <p className="text-sm text-muted-foreground">No {filter} bookings.</p>
+        )}
 
         <div className="space-y-4">
-          {bookings.map((b) => (
+          {visibleBookings.map((b) => (
             <BookingCard
               key={b.id}
               booking={b}
               ownerNumber={ownerNumber}
-              onConfirm={() => setStatus(b, "confirmed")}
+              onConfirm={(assignee) => setStatus(b, "confirmed", assignee)}
               onDecline={() => setStatus(b, "declined")}
             />
           ))}
@@ -240,9 +313,11 @@ function BookingCard({
 }: {
   booking: Booking;
   ownerNumber: string;
-  onConfirm: () => void;
+  onConfirm: (assignee: string) => void;
   onDecline: () => void;
 }) {
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignee, setAssignee] = useState<string>(TEAM[0]);
   const customerNumber = digitsOnly(b.customer_phone);
   const message =
     `Hello ${b.customer_name}, this is Yalla Nanny regarding booking ${b.reference} ` +
@@ -283,13 +358,18 @@ function BookingCard({
           <Row icon={MapPin} text={`${b.emirate} — ${b.address}`} />
           <Row icon={Phone} text={b.customer_phone} />
         </div>
+        {b.status === "confirmed" && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary">
+            <UserCheck className="h-4 w-4" /> Assigned to {b.nanny_name}
+          </div>
+        )}
         {b.notes && <p className="mt-3 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">{b.notes}</p>}
 
         <div className="mt-4 flex flex-wrap gap-2">
           {b.status === "pending" && (
             <>
-              <Button size="sm" onClick={onConfirm} className="gap-2 rounded-full">
-                <CheckCircle2 className="h-4 w-4" /> Confirm booking
+              <Button size="sm" onClick={() => setAssignOpen(true)} className="gap-2 rounded-full">
+                <CheckCircle2 className="h-4 w-4" /> Accept &amp; assign
               </Button>
               <Button size="sm" variant="outline" onClick={onDecline} className="gap-2 rounded-full">
                 <XCircle className="h-4 w-4" /> Decline
@@ -311,6 +391,53 @@ function BookingCard({
             </Button>
           )}
         </div>
+
+        <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign this booking</DialogTitle>
+              <DialogDescription>
+                Choose the team member for {b.customer_name}&apos;s booking on{" "}
+                {format(new Date(b.booking_date), "EEE d MMM")} at {b.start_time} in {b.emirate}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-1">
+              <Label className="mb-2 flex items-center gap-2 text-sm">
+                <UserCheck className="h-4 w-4 text-primary" /> Assign to
+              </Label>
+              <Select value={assignee} onValueChange={setAssignee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEAM.map((n) => (
+                    <SelectItem key={n} value={n}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAssignOpen(false)}
+                className="rounded-full"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  onConfirm(assignee);
+                  setAssignOpen(false);
+                }}
+                className="gap-2 rounded-full"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Confirm booking
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
