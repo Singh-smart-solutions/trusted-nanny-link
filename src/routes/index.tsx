@@ -17,6 +17,7 @@ import {
   ArrowRight,
   ArrowLeft,
   BadgeCheck,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { addDemoBooking } from "@/lib/demo-bookings";
+import { addDemoFeedback } from "@/lib/demo-feedback";
 
 
 export const Route = createFileRoute("/")({
@@ -225,6 +227,7 @@ function BookingPage() {
             {step === 4 && (
               <Confirmation
                 bookingRef={bookingRef}
+                customerName={name}
                 nanny={nanny}
                 date={date}
                 startTime={startTime}
@@ -668,6 +671,7 @@ function StepPayment(props: {
 
 function Confirmation(props: {
   bookingRef: string;
+  customerName: string;
   nanny: Nanny;
   date: string;
   startTime: string;
@@ -678,7 +682,7 @@ function Confirmation(props: {
   balance: number;
   onNew: () => void;
 }) {
-  const { bookingRef, nanny, date, startTime, duration, emirate, address, advance, balance, onNew } = props;
+  const { bookingRef, customerName, nanny, date, startTime, duration, emirate, address, advance, balance, onNew } = props;
   const end = addHoursToTime(startTime, duration);
   return (
     <section className="mx-auto max-w-xl text-center">
@@ -710,6 +714,8 @@ function Confirmation(props: {
         </CardContent>
       </Card>
 
+      <FeedbackPrompt customerName={customerName} bookingRef={bookingRef} />
+
       <div className="mt-6 flex flex-col items-center gap-2">
         <Button className="w-full rounded-full sm:w-auto" size="lg" onClick={onNew}>
           Book another session
@@ -717,6 +723,60 @@ function Confirmation(props: {
         <p className="text-xs text-muted-foreground">Need to change plans? Free cancellation up to 6 hours before start.</p>
       </div>
     </section>
+  );
+}
+
+function FeedbackPrompt({ customerName, bookingRef }: { customerName: string; bookingRef: string }) {
+  const [rating, setRating] = useState(0);
+  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState(false);
+
+  if (sent) {
+    return (
+      <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm font-medium text-primary">
+        <CheckCircle2 className="h-4 w-4" /> Thanks for your feedback!
+      </div>
+    );
+  }
+
+  function submit() {
+    if (rating === 0) return toast.error("Tap a star to rate your experience");
+    addDemoFeedback({
+      id: `fb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      reference: bookingRef,
+      customer_name: customerName.trim() || "Guest",
+      rating,
+      message: message.trim() || "(No comment)",
+      created_at: new Date().toISOString(),
+    });
+    setSent(true);
+    toast.success("Thanks for your feedback!");
+  }
+
+  return (
+    <Card className="mt-6 border-border bg-card text-left">
+      <CardContent className="p-5">
+        <div className="text-sm font-semibold">How was your booking experience?</div>
+        <p className="mt-0.5 text-xs text-muted-foreground">Your feedback helps us improve our service.</p>
+        <div className="mt-3 flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} type="button" aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => setRating(n)}>
+              <Star className={cn("h-7 w-7 transition-colors", n <= rating ? "fill-primary text-primary" : "text-muted-foreground/40")} />
+            </button>
+          ))}
+        </div>
+        <Textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Any suggestions? (optional)"
+          rows={3}
+          className="mt-3"
+        />
+        <Button onClick={submit} className="mt-3 w-full rounded-full sm:w-auto">
+          Submit feedback
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
