@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute("/auth")({
+export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "Owner Login — Yalla Nanny" },
@@ -107,7 +107,7 @@ function AuthPage() {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { emailRedirectTo: window.location.origin + "/auth" },
+          options: { emailRedirectTo: window.location.origin + "/admin" },
         });
         if (error) throw error;
         if (!data.session) {

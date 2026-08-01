@@ -153,7 +153,7 @@ function OwnerDashboard() {
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    navigate({ to: "/admin", replace: true });
   }
 
   const ownerNumber = digitsOnly(settingsQuery.data?.whatsapp_number ?? "");
