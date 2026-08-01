@@ -2,27 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * The first account that signs in becomes the owner. Every later account is a
- * normal (non-owner) user until an existing owner grants access.
+ * DEMO MODE: every signed-in visitor is granted the owner role, so anyone can
+ * open the admin dashboard for testing. This is intentionally open for the demo
+ * — before going to production, restrict this to a real allow-list (e.g. only
+ * the first account, or a fixed set of owner emails).
  */
 export const claimOwnerRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: existing, error: existingError } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "owner");
-    if (existingError) throw existingError;
-
-    if (existing && existing.length > 0) {
-      return { isOwner: existing.some((r) => r.user_id === context.userId) };
-    }
-
     const { error } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: context.userId, role: "owner" });
+      .upsert({ user_id: context.userId, role: "owner" }, { onConflict: "user_id,role" });
     if (error) throw error;
 
     return { isOwner: true };
