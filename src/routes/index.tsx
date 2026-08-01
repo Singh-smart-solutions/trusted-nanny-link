@@ -136,6 +136,7 @@ function BookingPage() {
         balance_due: balance,
         status: "pending",
         created_at: new Date().toISOString(),
+        mine: true,
       });
 
       // Best-effort persistence to Supabase; the demo works even if it fails.
