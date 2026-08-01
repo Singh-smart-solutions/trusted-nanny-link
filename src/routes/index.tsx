@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { format, addDays, parse, startOfDay } from "date-fns";
@@ -763,7 +763,6 @@ function Footer() {
         <div className="flex items-center gap-4">
           <span>Trade Licence #123456</span>
           <span>support@yallananny.ae</span>
-          <Link to="/auth" className="underline-offset-4 hover:underline">Owner login</Link>
         </div>
 
       </div>
