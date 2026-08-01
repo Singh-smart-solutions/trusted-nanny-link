@@ -1,1 +1,7 @@
 project_id = "yuaqrtvgtvtcixaxmlqt"
+
+[auth]
+# Demo: allow one-click, no-account sign-in so anyone can open the admin
+# dashboard for testing. Also toggle this on in the hosted Supabase dashboard
+# (Authentication → Sign In / Providers → Anonymous sign-ins).
+enable_anonymous_sign_ins = true

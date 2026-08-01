@@ -37,35 +37,36 @@ function AuthPage() {
     });
   }, [navigate]);
 
-  // Demo access: sign in with one click, no account to create. Reuses a shared
-  // demo owner account so every demo session lands on the same dashboard.
+  // Demo access: one click signs anyone in as an admin, no account to create.
+  // Every signed-in visitor is granted the owner role (see claimOwnerRole).
   async function demoLogin() {
     setBusy(true);
     try {
-      const demoEmail = "demo-owner@yallananny.ae";
-      const demoPassword = "demo-owner-1234";
       let signedIn = false;
 
-      const signIn = await supabase.auth.signInWithPassword({
-        email: demoEmail,
-        password: demoPassword,
-      });
-      if (!signIn.error && signIn.data.session) {
-        signedIn = true;
-      } else {
-        const signUp = await supabase.auth.signUp({ email: demoEmail, password: demoPassword });
-        if (!signUp.error && signUp.data.session) signedIn = true;
-      }
+      // Instant anonymous session — nothing to create, works for every visitor.
+      const anon = await supabase.auth.signInAnonymously();
+      if (!anon.error && anon.data.session) signedIn = true;
 
-      // Last resort (only works while no owner exists yet).
+      // Fallback if anonymous sign-ins are disabled: a shared demo account.
       if (!signedIn) {
-        const anon = await supabase.auth.signInAnonymously();
-        if (!anon.error && anon.data.session) signedIn = true;
+        const demoEmail = "demo-owner@yallananny.ae";
+        const demoPassword = "demo-owner-1234";
+        const signIn = await supabase.auth.signInWithPassword({
+          email: demoEmail,
+          password: demoPassword,
+        });
+        if (!signIn.error && signIn.data.session) {
+          signedIn = true;
+        } else {
+          const signUp = await supabase.auth.signUp({ email: demoEmail, password: demoPassword });
+          if (!signUp.error && signUp.data.session) signedIn = true;
+        }
       }
 
       if (!signedIn) {
         throw new Error(
-          "One-click demo login needs email confirmation turned off (or anonymous sign-ins enabled) in Supabase Auth settings.",
+          "Enable Anonymous sign-ins (or turn off email confirmation) in Supabase Auth settings to allow one-click demo access.",
         );
       }
 
@@ -188,7 +189,7 @@ function AuthPage() {
         </Card>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          The first account created becomes the owner.
+          Demo mode — anyone can open the admin dashboard for testing.
         </p>
       </div>
     </div>
