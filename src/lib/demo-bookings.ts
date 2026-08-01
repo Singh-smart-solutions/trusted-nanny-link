@@ -23,9 +23,12 @@ export type DemoBooking = {
   balance_due: number;
   status: DemoStatus;
   created_at: string;
+  // True for bookings made by the current visitor (shown on "My bookings").
+  // Seeded sample bookings from other customers are only shown to the owner.
+  mine?: boolean;
 };
 
-const KEY = "yn_demo_bookings_v1";
+const KEY = "yn_demo_bookings_v2";
 
 function ymd(offsetDays: number): string {
   const d = new Date();
@@ -53,12 +56,13 @@ function seed(): DemoBooking[] {
       start_time: "09:00",
       duration_hours: 4,
       kids: "2",
-      nanny_name: "Verified Yalla Nanny",
+      nanny_name: "Maria Santos",
       total: 231,
       advance_paid: 116,
       balance_due: 115,
-      status: "pending",
+      status: "confirmed",
       created_at: isoAgo(12),
+      mine: true,
     },
     {
       id: "seed-2",
