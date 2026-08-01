@@ -30,17 +30,32 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  // Demo: open the dashboard directly, no login screen. The manual form is only
+  // revealed if auto sign-in fails (e.g. Supabase settings not enabled yet).
+  const [autoFailed, setAutoFailed] = useState(false);
 
   useEffect(() => {
+    let active = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/owner", replace: true });
+      if (!active) return;
+      if (data.session) {
+        navigate({ to: "/owner", replace: true });
+      } else {
+        // Just opening the admin link signs the visitor in and opens the dashboard.
+        demoLogin();
+      }
     });
-  }, [navigate]);
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Demo access: one click signs anyone in as an admin, no account to create.
-  // Every signed-in visitor is granted the owner role (see claimOwnerRole).
+  // Demo access: signs anyone in as an admin, no account to create. Every
+  // signed-in visitor is granted the owner role (see claimOwnerRole).
   async function demoLogin() {
     setBusy(true);
+    setAutoFailed(false);
     try {
       let signedIn = false;
 
@@ -73,6 +88,7 @@ function AuthPage() {
       await claimOwnerRole();
       navigate({ to: "/owner", replace: true });
     } catch (err) {
+      setAutoFailed(true);
       toast.error(err instanceof Error ? err.message : "Could not start the demo session");
     } finally {
       setBusy(false);
@@ -113,6 +129,21 @@ function AuthPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // While auto sign-in is in progress, just show a loading screen — no form.
+  if (!autoFailed) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-4">
+        <div className="flex flex-col items-center text-center">
+          <div className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Baby className="h-6 w-6" />
+          </div>
+          <h1 className="mt-3 font-serif text-2xl font-semibold">Opening admin dashboard…</h1>
+          <p className="mt-1 text-sm text-muted-foreground">One moment while we sign you in.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
