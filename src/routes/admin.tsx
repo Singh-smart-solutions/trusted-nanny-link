@@ -193,10 +193,13 @@ function AdminDashboard() {
           feedback.length === 0 ? (
             <p className="text-sm text-muted-foreground">No feedback yet.</p>
           ) : (
-            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-              {feedback.map((f) => (
-                <FeedbackRow key={f.id} feedback={f} />
-              ))}
+            <div className="space-y-4">
+              <FeedbackSummary items={feedback} />
+              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                {feedback.map((f) => (
+                  <FeedbackRow key={f.id} feedback={f} />
+                ))}
+              </div>
             </div>
           )
         ) : view === "incoming" ? (
@@ -447,6 +450,24 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status}
     </Badge>
+  );
+}
+
+function FeedbackSummary({ items }: { items: DemoFeedback[] }) {
+  const avg = items.reduce((sum, f) => sum + f.rating, 0) / items.length;
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
+      <div className="text-center">
+        <div className="font-serif text-3xl font-semibold leading-none">{avg.toFixed(1)}</div>
+        <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">avg rating</div>
+      </div>
+      <div>
+        <Stars value={Math.round(avg)} />
+        <div className="mt-1 text-xs text-muted-foreground">
+          {items.length} review{items.length === 1 ? "" : "s"}
+        </div>
+      </div>
+    </div>
   );
 }
 
