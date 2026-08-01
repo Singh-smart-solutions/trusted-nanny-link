@@ -1,8 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
-  ArrowLeft,
   Baby,
   CheckCircle2,
   Inbox,
@@ -160,12 +159,6 @@ function AdminDashboard() {
                     badge={bookings.length || undefined}
                     onClick={() => go("all")}
                   />
-                  <Link
-                    to="/"
-                    className="mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
-                  >
-                    <ArrowLeft className="h-4 w-4" /> Back to site
-                  </Link>
                 </nav>
               </SheetContent>
             </Sheet>
