@@ -342,8 +342,13 @@ function BookingRow({
           </div>
           <div className="truncate text-xs text-muted-foreground">{b.address}</div>
           {b.status === "confirmed" && (
-            <div className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
-              <UserCheck className="h-3.5 w-3.5" /> {b.nanny_name}
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium text-primary">
+              <span className="flex items-center gap-1">
+                <UserCheck className="h-3.5 w-3.5" /> {b.nanny_name}
+              </span>
+              <span className="text-muted-foreground">
+                · {b.balance_paid ? "Paid in full" : `Balance AED ${b.balance_due} due`}
+              </span>
             </div>
           )}
         </div>
