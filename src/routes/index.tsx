@@ -662,7 +662,10 @@ function StepPayment(props: {
         )}
       </Button>
 
-      <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        You only pay the 50% advance now — the AED {balance} balance is paid after the session.
+      </p>
+      <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
         <ShieldCheck className="h-3.5 w-3.5" /> Payments are secured & PCI-DSS compliant. Prices include 5% VAT.
       </p>
     </section>
@@ -716,10 +719,15 @@ function Confirmation(props: {
 
       <FeedbackPrompt customerName={customerName} bookingRef={bookingRef} />
 
-      <div className="mt-6 flex flex-col items-center gap-2">
-        <Button className="w-full rounded-full sm:w-auto" size="lg" onClick={onNew}>
-          Book another session
-        </Button>
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button asChild variant="outline" className="rounded-full" size="lg">
+            <Link to="/my-bookings">View my bookings</Link>
+          </Button>
+          <Button className="rounded-full" size="lg" onClick={onNew}>
+            Book another session
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground">Need to change plans? Free cancellation up to 6 hours before start.</p>
       </div>
     </section>
