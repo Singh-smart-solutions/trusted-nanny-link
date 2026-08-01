@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { format, addDays, parse, startOfDay } from "date-fns";
 import {
@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { addDemoBooking } from "@/lib/demo-bookings";
 import { addDemoFeedback } from "@/lib/demo-feedback";
+import { getSavedClient, saveClient, clearSavedClient } from "@/lib/saved-client";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 export const Route = createFileRoute("/")({
@@ -89,8 +91,21 @@ function BookingPage() {
   const [payMethod, setPayMethod] = useState<"card" | "applepay" | "tabby">("card");
   const [processing, setProcessing] = useState(false);
   const [bookingRef, setBookingRef] = useState<string>("");
+  const [saveDetails, setSaveDetails] = useState(false);
 
-  
+  // Pre-fill contact & address from a previous booking, if the visitor saved them.
+  useEffect(() => {
+    const saved = getSavedClient();
+    if (saved) {
+      setName(saved.name);
+      setPhone(saved.phone);
+      setEmirate(saved.emirate);
+      setAddress(saved.address);
+      setSaveDetails(true);
+    }
+  }, []);
+
+
   const subtotal = nanny.rate * duration;
   const vat = Math.round(subtotal * 0.05);
   const total = subtotal + vat;
@@ -118,6 +133,13 @@ function BookingPage() {
     setProcessing(true);
     const ref = "YN-" + Math.random().toString(36).slice(2, 8).toUpperCase();
     try {
+      // Remember (or forget) the customer's details for next time.
+      if (saveDetails) {
+        saveClient({ name: name.trim(), phone: phone.trim(), emirate, address: address.trim() });
+      } else {
+        clearSavedClient();
+      }
+
       // Save to the local demo store so the booking shows up in the owner
       // dashboard and "My bookings" without any backend login.
       addDemoBooking({
@@ -212,6 +234,8 @@ function BookingPage() {
                 setName={setName}
                 phone={phone}
                 setPhone={setPhone}
+                saveDetails={saveDetails}
+                setSaveDetails={setSaveDetails}
               />
             )}
             {step === 3 && (
@@ -515,8 +539,9 @@ function StepDetails(props: {
   notes: string; setNotes: (v: string) => void;
   name: string; setName: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
+  saveDetails: boolean; setSaveDetails: (v: boolean) => void;
 }) {
-  const { emirate, setEmirate, address, setAddress, notes, setNotes, name, setName, phone, setPhone } = props;
+  const { emirate, setEmirate, address, setAddress, notes, setNotes, name, setName, phone, setPhone, saveDetails, setSaveDetails } = props;
   return (
     <section>
       <SectionHeader
@@ -559,6 +584,10 @@ function StepDetails(props: {
             rows={4}
           />
         </div>
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-card p-3 text-sm">
+          <Checkbox checked={saveDetails} onCheckedChange={(v) => setSaveDetails(v === true)} />
+          <span>Save my details for faster booking next time</span>
+        </label>
       </div>
     </section>
   );
