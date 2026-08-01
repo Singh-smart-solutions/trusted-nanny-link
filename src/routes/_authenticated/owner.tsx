@@ -26,13 +26,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -41,16 +34,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-
-// Team members a booking can be assigned to on acceptance.
-const TEAM = [
-  "Maria Santos",
-  "Grace Adeyemi",
-  "Anna Cruz",
-  "Divya Nair",
-  "Fatima Noor",
-  "Jenny Rose",
-];
 
 type Filter = "all" | "pending" | "confirmed" | "declined";
 
@@ -317,7 +300,7 @@ function BookingCard({
   onDecline: () => void;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignee, setAssignee] = useState<string>(TEAM[0]);
+  const [assignee, setAssignee] = useState<string>("");
   const customerNumber = digitsOnly(b.customer_phone);
   const message =
     `Hello ${b.customer_name}, this is Yalla Nanny regarding booking ${b.reference} ` +
@@ -405,18 +388,18 @@ function BookingCard({
               <Label className="mb-2 flex items-center gap-2 text-sm">
                 <UserCheck className="h-4 w-4 text-primary" /> Assign to
               </Label>
-              <Select value={assignee} onValueChange={setAssignee}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEAM.map((n) => (
-                    <SelectItem key={n} value={n}>
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+                placeholder="Type the person's name, e.g. Maria Santos"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && assignee.trim()) {
+                    onConfirm(assignee.trim());
+                    setAssignOpen(false);
+                  }
+                }}
+              />
             </div>
             <DialogFooter>
               <Button
@@ -428,7 +411,12 @@ function BookingCard({
               </Button>
               <Button
                 onClick={() => {
-                  onConfirm(assignee);
+                  const name = assignee.trim();
+                  if (!name) {
+                    toast.error("Enter the name of the person to assign");
+                    return;
+                  }
+                  onConfirm(name);
                   setAssignOpen(false);
                 }}
                 className="gap-2 rounded-full"

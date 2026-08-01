@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { format, addDays, parse, startOfDay } from "date-fns";
@@ -267,10 +267,16 @@ function Header() {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">UAE · By the hour</div>
           </div>
         </div>
-        <div className="hidden items-center gap-4 text-xs text-muted-foreground md:flex">
-          <span className="inline-flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> KHDA verified</span>
-          <span className="inline-flex items-center gap-1"><BadgeCheck className="h-3.5 w-3.5 text-primary" /> Insured sessions</span>
-          <span className="inline-flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-primary" /> 800-NANNY</span>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="hidden items-center gap-1 md:inline-flex"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> KHDA verified</span>
+          <span className="hidden items-center gap-1 md:inline-flex"><BadgeCheck className="h-3.5 w-3.5 text-primary" /> Insured sessions</span>
+          <span className="hidden items-center gap-1 md:inline-flex"><Phone className="h-3.5 w-3.5 text-primary" /> 800-NANNY</span>
+          <Link
+            to="/my-bookings"
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-secondary"
+          >
+            <CalendarDays className="h-3.5 w-3.5 text-primary" /> My bookings
+          </Link>
         </div>
       </div>
     </header>
