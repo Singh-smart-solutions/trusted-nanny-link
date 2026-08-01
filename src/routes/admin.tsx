@@ -8,7 +8,9 @@ import {
   LayoutList,
   Menu,
   MessageCircle,
+  MessageSquare,
   Search,
+  Star,
   UserCheck,
   XCircle,
 } from "lucide-react";
@@ -19,6 +21,7 @@ import {
   updateDemoBooking,
   type DemoBooking,
 } from "@/lib/demo-bookings";
+import { getDemoFeedback, type DemoFeedback } from "@/lib/demo-feedback";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -55,7 +58,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminDashboard,
 });
 
-type View = "incoming" | "all";
+type View = "incoming" | "all" | "feedback";
 
 function digitsOnly(v: string) {
   return v.replace(/\D/g, "");
@@ -63,6 +66,7 @@ function digitsOnly(v: string) {
 
 function AdminDashboard() {
   const [bookings, setBookings] = useState<DemoBooking[]>([]);
+  const [feedback, setFeedback] = useState<DemoFeedback[]>([]);
   const [view, setView] = useState<View>("incoming");
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -73,6 +77,7 @@ function AdminDashboard() {
     function refresh() {
       const data = getDemoBookings();
       setBookings(data);
+      setFeedback(getDemoFeedback());
       if (seenIds.current === null) {
         seenIds.current = new Set(data.map((b) => b.id));
       } else {
@@ -159,11 +164,22 @@ function AdminDashboard() {
                     badge={bookings.length || undefined}
                     onClick={() => go("all")}
                   />
+                  <MenuItem
+                    active={view === "feedback"}
+                    icon={MessageSquare}
+                    label="Feedback"
+                    badge={feedback.length || undefined}
+                    onClick={() => go("feedback")}
+                  />
                 </nav>
               </SheetContent>
             </Sheet>
             <div className="font-serif text-lg font-semibold">
-              {view === "incoming" ? "Incoming requests" : "All bookings"}
+              {view === "incoming"
+                ? "Incoming requests"
+                : view === "all"
+                  ? "All bookings"
+                  : "Client feedback"}
             </div>
           </div>
           {view === "incoming" && pending.length > 0 && (
@@ -173,7 +189,17 @@ function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
-        {view === "incoming" ? (
+        {view === "feedback" ? (
+          feedback.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No feedback yet.</p>
+          ) : (
+            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+              {feedback.map((f) => (
+                <FeedbackRow key={f.id} feedback={f} />
+              ))}
+            </div>
+          )
+        ) : view === "incoming" ? (
           pending.length === 0 ? (
             <EmptyState />
           ) : (
@@ -421,5 +447,37 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status}
     </Badge>
+  );
+}
+
+function FeedbackRow({ feedback: f }: { feedback: DemoFeedback }) {
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="truncate text-sm font-semibold">{f.customer_name}</span>
+        <Stars value={f.rating} />
+      </div>
+      <p className="mt-1.5 text-sm text-muted-foreground">{f.message}</p>
+      <div className="mt-1 text-[11px] text-muted-foreground">
+        {format(new Date(f.created_at), "d MMM yyyy")}
+        {f.reference ? ` · Ref ${f.reference}` : ""}
+      </div>
+    </div>
+  );
+}
+
+function Stars({ value }: { value: number }) {
+  return (
+    <span className="flex shrink-0 items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={cn(
+            "h-3.5 w-3.5",
+            n <= value ? "fill-primary text-primary" : "text-muted-foreground/40",
+          )}
+        />
+      ))}
+    </span>
   );
 }
