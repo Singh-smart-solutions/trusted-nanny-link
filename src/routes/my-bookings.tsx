@@ -1,11 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Baby, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Baby, CheckCircle2, MessageSquarePlus, Star } from "lucide-react";
+import { toast } from "sonner";
 
 import { getDemoBookings, type DemoBooking } from "@/lib/demo-bookings";
+import { addDemoFeedback } from "@/lib/demo-feedback";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/my-bookings")({
@@ -16,7 +28,7 @@ export const Route = createFileRoute("/my-bookings")({
       {
         name: "description",
         content:
-          "See your Yalla Nanny bookings, their status and the nanny assigned to your confirmed sessions.",
+          "See your Yalla Nanny bookings, their status, the assigned nanny, and leave feedback.",
       },
     ],
   }),
@@ -25,9 +37,10 @@ export const Route = createFileRoute("/my-bookings")({
 
 function MyBookings() {
   const [bookings, setBookings] = useState<DemoBooking[]>([]);
+  const [reviewFor, setReviewFor] = useState<DemoBooking | null>(null);
+  const [submitted, setSubmitted] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Only the visitor's own bookings — not other customers' bookings.
     setBookings(getDemoBookings().filter((b) => b.mine));
   }, []);
 
@@ -65,16 +78,48 @@ function MyBookings() {
         ) : (
           <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {bookings.map((b) => (
-              <ClientBookingRow key={b.id} booking={b} />
+              <ClientBookingRow
+                key={b.id}
+                booking={b}
+                submitted={submitted.has(b.id)}
+                onReview={() => setReviewFor(b)}
+              />
             ))}
           </div>
         )}
       </main>
+
+      <FeedbackDialog
+        booking={reviewFor}
+        onClose={() => setReviewFor(null)}
+        onSubmit={(rating, message) => {
+          if (!reviewFor) return;
+          addDemoFeedback({
+            id: `fb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            reference: reviewFor.reference,
+            customer_name: reviewFor.customer_name,
+            rating,
+            message,
+            created_at: new Date().toISOString(),
+          });
+          setSubmitted((s) => new Set(s).add(reviewFor.id));
+          setReviewFor(null);
+          toast.success("Thanks for your feedback!");
+        }}
+      />
     </div>
   );
 }
 
-function ClientBookingRow({ booking: b }: { booking: DemoBooking }) {
+function ClientBookingRow({
+  booking: b,
+  submitted,
+  onReview,
+}: {
+  booking: DemoBooking;
+  submitted: boolean;
+  onReview: () => void;
+}) {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between gap-3">
@@ -108,7 +153,99 @@ function ClientBookingRow({ booking: b }: { booking: DemoBooking }) {
           Not available — please try another time.
         </div>
       )}
+
+      <div className="mt-3">
+        {submitted ? (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Feedback sent — thank you!
+          </span>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onReview}
+            className="h-8 gap-1.5 rounded-full px-3 text-xs"
+          >
+            <MessageSquarePlus className="h-3.5 w-3.5" /> Leave feedback
+          </Button>
+        )}
+      </div>
     </div>
+  );
+}
+
+function FeedbackDialog({
+  booking,
+  onClose,
+  onSubmit,
+}: {
+  booking: DemoBooking | null;
+  onClose: () => void;
+  onSubmit: (rating: number, message: string) => void;
+}) {
+  const [rating, setRating] = useState(5);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    setRating(5);
+    setMessage("");
+  }, [booking]);
+
+  return (
+    <Dialog open={booking !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>How was your experience?</DialogTitle>
+          <DialogDescription>
+            Your feedback helps us improve the service{booking ? ` (Ref ${booking.reference})` : ""}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-1">
+          <div>
+            <Label className="mb-2 block text-sm">Rating</Label>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-label={`${n} star${n > 1 ? "s" : ""}`}
+                  onClick={() => setRating(n)}
+                >
+                  <Star
+                    className={cn(
+                      "h-7 w-7 transition-colors",
+                      n <= rating ? "fill-primary text-primary" : "text-muted-foreground/40",
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="mb-2 block text-sm">Suggestions (optional)</Label>
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="What went well, and how can we improve?"
+              rows={4}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="rounded-full">
+            Cancel
+          </Button>
+          <Button
+            onClick={() => onSubmit(rating, message.trim() || "(No comment)")}
+            className="rounded-full"
+          >
+            Submit feedback
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
