@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { toast } from "sonner";
 import {
   ArrowLeft,
   Baby,
@@ -9,27 +8,25 @@ import {
   CheckCircle2,
   Clock,
   MapPin,
-  Search,
   UserCheck,
 } from "lucide-react";
 
-import { lookupBookings, type ClientBooking } from "@/lib/bookings.functions";
+import { getDemoBookings, type DemoBooking } from "@/lib/demo-bookings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/my-bookings")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "My Bookings — Yalla Nanny" },
       {
         name: "description",
         content:
-          "Look up your Yalla Nanny bookings by mobile number. See status and the nanny assigned to your confirmed sessions.",
+          "See your Yalla Nanny bookings, their status and the nanny assigned to your confirmed sessions.",
       },
     ],
   }),
@@ -37,28 +34,11 @@ export const Route = createFileRoute("/my-bookings")({
 });
 
 function MyBookings() {
-  const [phone, setPhone] = useState("+971 ");
-  const [busy, setBusy] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [results, setResults] = useState<ClientBooking[]>([]);
+  const [bookings, setBookings] = useState<DemoBooking[]>([]);
 
-  async function search(e: React.FormEvent) {
-    e.preventDefault();
-    if (phone.replace(/\D/g, "").length < 7) {
-      toast.error("Enter the mobile number you booked with");
-      return;
-    }
-    setBusy(true);
-    try {
-      const data = await lookupBookings({ data: phone });
-      setResults(data);
-      setSearched(true);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not load your bookings");
-    } finally {
-      setBusy(false);
-    }
-  }
+  useEffect(() => {
+    setBookings(getDemoBookings());
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,47 +63,20 @@ function MyBookings() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-        <Card>
-          <CardContent className="p-5">
-            <Label className="mb-2 flex items-center gap-2 text-sm">
-              <Search className="h-4 w-4 text-primary" /> Find your bookings
-            </Label>
-            <form onSubmit={search} className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+971 5X XXX XXXX"
-                inputMode="tel"
-                className="h-12 text-base"
-              />
-              <Button type="submit" disabled={busy} className="h-12 gap-2 rounded-full sm:w-auto">
-                <Search className="h-4 w-4" /> {busy ? "Searching…" : "View my bookings"}
-              </Button>
-            </form>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Enter the mobile number you used when booking to see your status and assigned nanny.
-            </p>
-          </CardContent>
-        </Card>
-
-        {searched && results.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No bookings found for that mobile number. Double-check the number, or make a new booking.
-          </p>
-        )}
-
-        <div className="space-y-4">
-          {results.map((b) => (
-            <ClientBookingCard key={b.reference} booking={b} />
-          ))}
-        </div>
+      <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+        <p className="text-sm text-muted-foreground">
+          Your recent bookings and their status. Once we confirm a booking, your assigned nanny
+          appears here.
+        </p>
+        {bookings.map((b) => (
+          <ClientBookingCard key={b.id} booking={b} />
+        ))}
       </main>
     </div>
   );
 }
 
-function ClientBookingCard({ booking: b }: { booking: ClientBooking }) {
+function ClientBookingCard({ booking: b }: { booking: DemoBooking }) {
   const end = addHoursToTime(b.start_time, b.duration_hours);
   return (
     <Card>
