@@ -1,228 +1,338 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
+import {
+  ArrowLeft,
+  Baby,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  MessageCircle,
+  Phone,
+  UserCheck,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Baby, Lock, LogIn, Sparkles } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
-import { claimOwnerRole } from "@/lib/owner.functions";
+import {
+  getDemoBookings,
+  updateDemoBooking,
+  type DemoBooking,
+} from "@/lib/demo-bookings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
+  ssr: false,
   head: () => ({
     meta: [
-      { title: "Owner Login — Yalla Nanny" },
-      { name: "description", content: "Owner sign-in for Yalla Nanny. Review incoming nanny bookings, confirm them and message families on WhatsApp." },
-      { property: "og:title", content: "Owner Login — Yalla Nanny" },
-      { property: "og:description", content: "Owner sign-in for Yalla Nanny. Review incoming nanny bookings and confirm them." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { title: "Owner Dashboard — Yalla Nanny" },
+      {
+        name: "description",
+        content:
+          "Review incoming nanny bookings, confirm or decline them and assign a team member.",
+      },
     ],
   }),
-  component: AuthPage,
+  component: AdminDashboard,
 });
 
-function AuthPage() {
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  // Demo: open the dashboard directly, no login screen. The manual form is only
-  // revealed if auto sign-in fails (e.g. Supabase settings not enabled yet).
-  const [autoFailed, setAutoFailed] = useState(false);
+type Filter = "all" | "pending" | "confirmed" | "declined";
 
+function digitsOnly(v: string) {
+  return v.replace(/\D/g, "");
+}
+
+function AdminDashboard() {
+  const [bookings, setBookings] = useState<DemoBooking[]>([]);
+  const [filter, setFilter] = useState<Filter>("all");
+  const seenIds = useRef<Set<string> | null>(null);
+
+  // Load from the local demo store and keep it fresh so a booking made in
+  // another tab shows up here (and pops a toast) within a few seconds.
   useEffect(() => {
-    let active = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      if (data.session) {
-        navigate({ to: "/owner", replace: true });
+    function refresh() {
+      const data = getDemoBookings();
+      setBookings(data);
+      if (seenIds.current === null) {
+        seenIds.current = new Set(data.map((b) => b.id));
       } else {
-        // Just opening the admin link signs the visitor in and opens the dashboard.
-        demoLogin();
+        for (const b of data) {
+          if (seenIds.current.has(b.id)) continue;
+          seenIds.current.add(b.id);
+          if (b.status === "pending") {
+            toast(`New booking request — ${b.customer_name}`, {
+              description: `${b.emirate} · ${format(new Date(b.booking_date), "EEE d MMM")} at ${b.start_time} · ${b.address}`,
+            });
+          }
+        }
       }
-    });
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }
+    refresh();
+    const id = setInterval(refresh, 4000);
+    return () => clearInterval(id);
   }, []);
 
-  // Demo access: signs anyone in as an admin, no account to create. Every
-  // signed-in visitor is granted the owner role (see claimOwnerRole).
-  async function demoLogin() {
-    setBusy(true);
-    setAutoFailed(false);
-    try {
-      let signedIn = false;
-
-      // Instant anonymous session — nothing to create, works for every visitor.
-      const anon = await supabase.auth.signInAnonymously();
-      if (!anon.error && anon.data.session) signedIn = true;
-
-      // Fallback if anonymous sign-ins are disabled: a shared demo account.
-      if (!signedIn) {
-        const demoEmail = "demo-owner@yallananny.ae";
-        const demoPassword = "demo-owner-1234";
-        const signIn = await supabase.auth.signInWithPassword({
-          email: demoEmail,
-          password: demoPassword,
-        });
-        if (!signIn.error && signIn.data.session) {
-          signedIn = true;
-        } else {
-          const signUp = await supabase.auth.signUp({ email: demoEmail, password: demoPassword });
-          if (!signUp.error && signUp.data.session) signedIn = true;
-        }
-      }
-
-      if (!signedIn) {
-        throw new Error(
-          "Enable Anonymous sign-ins (or turn off email confirmation) in Supabase Auth settings to allow one-click demo access.",
-        );
-      }
-
-      await claimOwnerRole();
-      navigate({ to: "/owner", replace: true });
-    } catch (err) {
-      setAutoFailed(true);
-      toast.error(err instanceof Error ? err.message : "Could not start the demo session");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim() || password.length < 6) {
-      toast.error("Enter an email and a password of at least 6 characters");
-      return;
-    }
-    setBusy(true);
-    try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: window.location.origin + "/admin" },
-        });
-        if (error) throw error;
-        if (!data.session) {
-          toast.success("Check your email to confirm your account, then sign in.");
-          setMode("signin");
-          return;
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-      }
-      await claimOwnerRole();
-      navigate({ to: "/owner", replace: true });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not sign in");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // While auto sign-in is in progress, just show a loading screen — no form.
-  if (!autoFailed) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-background px-4">
-        <div className="flex flex-col items-center text-center">
-          <div className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground">
-            <Baby className="h-6 w-6" />
-          </div>
-          <h1 className="mt-3 font-serif text-2xl font-semibold">Opening admin dashboard…</h1>
-          <p className="mt-1 text-sm text-muted-foreground">One moment while we sign you in.</p>
-        </div>
-      </div>
+  function setStatus(booking: DemoBooking, status: "confirmed" | "declined", assignee?: string) {
+    const patch: Partial<DemoBooking> = assignee ? { status, nanny_name: assignee } : { status };
+    const next = updateDemoBooking(booking.id, patch);
+    setBookings(next);
+    toast.success(
+      status === "confirmed"
+        ? `Booking ${booking.reference} confirmed${assignee ? ` · assigned to ${assignee}` : ""}`
+        : `Booking ${booking.reference} declined`,
     );
   }
 
+  const counts = {
+    all: bookings.length,
+    pending: bookings.filter((b) => b.status === "pending").length,
+    confirmed: bookings.filter((b) => b.status === "confirmed").length,
+    declined: bookings.filter((b) => b.status === "declined").length,
+  };
+  const visibleBookings =
+    filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
+
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <div className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground">
-            <Baby className="h-6 w-6" />
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border/60 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-2">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
+              <Baby className="h-5 w-5" />
+            </div>
+            <div className="leading-tight">
+              <div className="font-serif text-lg font-semibold">Owner dashboard</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {counts.pending} pending {counts.pending === 1 ? "booking" : "bookings"}
+              </div>
+            </div>
           </div>
-          <h1 className="mt-3 font-serif text-2xl font-semibold">Owner access</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sign in to review and confirm incoming bookings.
-          </p>
+          <Button asChild variant="ghost" size="sm" className="gap-2">
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4" /> Back to site
+            </Link>
+          </Button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-4xl space-y-6 px-4 py-6">
+        <div>
+          <div className="mb-1 flex items-center gap-2 text-sm font-medium">
+            <CalendarDays className="h-4 w-4 text-primary" /> All bookings
+          </div>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {([
+              ["all", "All"],
+              ["pending", "Pending"],
+              ["confirmed", "Confirmed"],
+              ["declined", "Declined"],
+            ] as [Filter, string][]).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={cn(
+                  "shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  filter === key
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card hover:bg-secondary",
+                )}
+              >
+                {label} ({counts[key]})
+              </button>
+            ))}
+          </div>
         </div>
 
-        <Card>
-          <CardContent className="p-5">
-            <Button
-              type="button"
-              onClick={demoLogin}
-              disabled={busy}
-              className="w-full gap-2 rounded-full"
-            >
-              <Sparkles className="h-4 w-4" />
-              {busy ? "Please wait…" : "Log in to owner dashboard"}
-            </Button>
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              One click — no account needed.
-            </p>
+        {bookings.length === 0 && (
+          <p className="text-sm text-muted-foreground">No bookings yet.</p>
+        )}
+        {bookings.length > 0 && visibleBookings.length === 0 && (
+          <p className="text-sm text-muted-foreground">No {filter} bookings.</p>
+        )}
 
-            <div className="my-4 flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
-              <span className="h-px flex-1 bg-border" />
-              or sign in with email
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <form onSubmit={submit} className="space-y-4">
-              <div>
-                <Label className="mb-2 block text-sm">Email</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="owner@yallananny.ae"
-                  autoComplete="email"
-                />
-              </div>
-              <div>
-                <Label className="mb-2 block text-sm">Password</Label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                />
-              </div>
-              <Button type="submit" className="w-full gap-2 rounded-full" disabled={busy}>
-                {mode === "signup" ? <Lock className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
-                {busy ? "Please wait…" : mode === "signup" ? "Create owner account" : "Sign in"}
-              </Button>
-            </form>
-
-            <button
-              type="button"
-              className="mt-4 w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
-              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            >
-              {mode === "signin"
-                ? "First time? Create the owner account"
-                : "Already have an account? Sign in"}
-            </button>
-          </CardContent>
-        </Card>
-
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Demo mode — anyone can open the admin dashboard for testing.
-        </p>
-      </div>
+        <div className="space-y-4">
+          {visibleBookings.map((b) => (
+            <BookingCard
+              key={b.id}
+              booking={b}
+              onConfirm={(assignee) => setStatus(b, "confirmed", assignee)}
+              onDecline={() => setStatus(b, "declined")}
+            />
+          ))}
+        </div>
+      </main>
     </div>
+  );
+}
+
+function BookingCard({
+  booking: b,
+  onConfirm,
+  onDecline,
+}: {
+  booking: DemoBooking;
+  onConfirm: (assignee: string) => void;
+  onDecline: () => void;
+}) {
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignee, setAssignee] = useState("");
+  const customerNumber = digitsOnly(b.customer_phone);
+  const message =
+    `Hello ${b.customer_name}, this is Yalla Nanny regarding booking ${b.reference} ` +
+    `on ${b.booking_date} at ${b.start_time} for ${b.duration_hours} hours in ${b.emirate}. ` +
+    `Advance received: AED ${b.advance_paid}. Balance due: AED ${b.balance_due}.`;
+  const customerLink = customerNumber
+    ? `https://wa.me/${customerNumber}?text=${encodeURIComponent(message)}`
+    : null;
+
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-serif text-lg font-semibold">{b.customer_name}</span>
+              <StatusBadge status={b.status} />
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">Ref {b.reference}</div>
+          </div>
+          <div className="text-right">
+            <div className="font-serif text-lg font-semibold">AED {b.total}</div>
+            <div className="text-xs text-muted-foreground">
+              Advance AED {b.advance_paid} · Balance AED {b.balance_due}
+            </div>
+          </div>
+        </div>
+
+        {b.status === "confirmed" && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary">
+            <UserCheck className="h-4 w-4" /> Assigned to {b.nanny_name}
+          </div>
+        )}
+        {b.notes && (
+          <p className="mt-3 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">{b.notes}</p>
+        )}
+
+        <Separator className="my-4" />
+
+        <div className="grid gap-2 text-sm sm:grid-cols-2">
+          <Row icon={CalendarDays} text={format(new Date(b.booking_date), "EEE d MMM yyyy")} />
+          <Row
+            icon={Clock}
+            text={`${b.start_time} · ${b.duration_hours} hrs · ${b.kids} ${b.kids === "1" ? "child" : "children"}`}
+          />
+          <Row icon={MapPin} text={`${b.emirate} — ${b.address}`} />
+          <Row icon={Phone} text={b.customer_phone} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {b.status === "pending" && (
+            <>
+              <Button size="sm" onClick={() => setAssignOpen(true)} className="gap-2 rounded-full">
+                <CheckCircle2 className="h-4 w-4" /> Accept &amp; assign
+              </Button>
+              <Button size="sm" variant="outline" onClick={onDecline} className="gap-2 rounded-full">
+                <XCircle className="h-4 w-4" /> Decline
+              </Button>
+            </>
+          )}
+          {customerLink && (
+            <Button asChild size="sm" variant="secondary" className="gap-2 rounded-full">
+              <a href={customerLink} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="h-4 w-4" /> WhatsApp family
+              </a>
+            </Button>
+          )}
+        </div>
+
+        <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign this booking</DialogTitle>
+              <DialogDescription>
+                Choose the team member for {b.customer_name}&apos;s booking on{" "}
+                {format(new Date(b.booking_date), "EEE d MMM")} at {b.start_time} in {b.emirate}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-1">
+              <Label className="mb-2 flex items-center gap-2 text-sm">
+                <UserCheck className="h-4 w-4 text-primary" /> Assign to
+              </Label>
+              <Input
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+                placeholder="Type the person's name, e.g. Maria Santos"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && assignee.trim()) {
+                    onConfirm(assignee.trim());
+                    setAssignOpen(false);
+                  }
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAssignOpen(false)} className="rounded-full">
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const name = assignee.trim();
+                  if (!name) {
+                    toast.error("Enter the name of the person to assign");
+                    return;
+                  }
+                  onConfirm(name);
+                  setAssignOpen(false);
+                }}
+                className="gap-2 rounded-full"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Confirm booking
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Row({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+      <span className="text-muted-foreground">{text}</span>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <Badge
+      variant="secondary"
+      className={cn(
+        "rounded-full text-[10px] uppercase tracking-wide",
+        status === "confirmed" && "bg-primary/15 text-primary",
+        status === "declined" && "bg-destructive/10 text-destructive",
+      )}
+    >
+      {status}
+    </Badge>
   );
 }

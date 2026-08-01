@@ -33,6 +33,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { addDemoBooking } from "@/lib/demo-bookings";
 
 
 export const Route = createFileRoute("/")({
@@ -115,9 +116,12 @@ function BookingPage() {
     setProcessing(true);
     const ref = "YN-" + Math.random().toString(36).slice(2, 8).toUpperCase();
     try {
-      const { error } = await supabase.from("bookings").insert({
+      // Save to the local demo store so the booking shows up in the owner
+      // dashboard and "My bookings" without any backend login.
+      addDemoBooking({
+        id: `bk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         reference: ref,
-        customer_name: name.trim().slice(0, 100),
+        customer_name: name.trim().slice(0, 100) || "Guest",
         customer_phone: phone.trim().slice(0, 30),
         emirate,
         address: address.trim().slice(0, 300),
@@ -127,22 +131,44 @@ function BookingPage() {
         duration_hours: duration,
         kids,
         nanny_name: nanny.name,
-        hourly_rate: nanny.rate,
-        subtotal,
-        vat,
         total,
         advance_paid: advance,
         balance_due: balance,
+        status: "pending",
+        created_at: new Date().toISOString(),
       });
-      if (error) throw error;
+
+      // Best-effort persistence to Supabase; the demo works even if it fails.
+      try {
+        await supabase.from("bookings").insert({
+          reference: ref,
+          customer_name: name.trim().slice(0, 100),
+          customer_phone: phone.trim().slice(0, 30),
+          emirate,
+          address: address.trim().slice(0, 300),
+          notes: notes.trim().slice(0, 500) || null,
+          booking_date: date,
+          start_time: startTime,
+          duration_hours: duration,
+          kids,
+          nanny_name: nanny.name,
+          hourly_rate: nanny.rate,
+          subtotal,
+          vat,
+          total,
+          advance_paid: advance,
+          balance_due: balance,
+        });
+      } catch {
+        // ignore — demo store already has the booking
+      }
+
       setBookingRef(ref);
       setStep(4);
       toast.success(`Advance of AED ${advance} received`, {
         description: `Booking ${ref} sent to the team for confirmation`,
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save your booking");
     } finally {
       setProcessing(false);
     }
