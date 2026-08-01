@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-import { format, addDays } from "date-fns";
+import { format, addDays, parse, startOfDay } from "date-fns";
 import {
   CalendarDays,
   Clock,
@@ -29,6 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -91,11 +93,6 @@ function BookingPage() {
   const total = subtotal + vat;
   const advance = Math.round(total * 0.5);
   const balance = total - advance;
-
-  const dateOptions = useMemo(
-    () => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)),
-    [],
-  );
 
   function next() {
     
@@ -172,7 +169,6 @@ function BookingPage() {
                 setDuration={setDuration}
                 kids={kids}
                 setKids={setKids}
-                dateOptions={dateOptions}
               />
             )}
             {step === 2 && (
@@ -366,9 +362,11 @@ function StepWhen(props: {
   startTime: string; setStartTime: (v: string) => void;
   duration: number; setDuration: (v: number) => void;
   kids: string; setKids: (v: string) => void;
-  dateOptions: Date[];
 }) {
-  const { date, setDate, startTime, setStartTime, duration, setDuration, kids, setKids, dateOptions } = props;
+  const { date, setDate, startTime, setStartTime, duration, setDuration, kids, setKids } = props;
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const selectedDate = date ? parse(date, "yyyy-MM-dd", new Date()) : undefined;
+  const isPresetTime = TIME_SLOTS.includes(startTime);
   return (
     <section>
       <SectionHeader
@@ -380,49 +378,60 @@ function StepWhen(props: {
       <div className="mt-5 space-y-6">
         <div>
           <Label className="mb-2 flex items-center gap-2 text-sm"><CalendarDays className="h-4 w-4 text-primary" /> Date</Label>
-          <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
-            {dateOptions.map((d) => {
-              const key = format(d, "yyyy-MM-dd");
-              const active = key === date;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setDate(key)}
-                  className={cn(
-                    "flex min-w-[68px] shrink-0 snap-start flex-col items-center rounded-xl border px-3 py-2 text-center transition-colors",
-                    active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-secondary",
-                  )}
-                >
-                  <span className="text-[10px] uppercase tracking-wider opacity-80">{format(d, "EEE")}</span>
-                  <span className="font-serif text-lg font-semibold leading-none">{format(d, "d")}</span>
-                  <span className="mt-0.5 text-[10px] opacity-80">{format(d, "MMM")}</span>
-                </button>
-              );
-            })}
-          </div>
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "h-12 w-full justify-start gap-2 text-left text-base font-normal",
+                  !date && "text-muted-foreground",
+                )}
+              >
+                <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
+                {selectedDate ? format(selectedDate, "EEE, d MMM yyyy") : "Select a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                defaultMonth={selectedDate}
+                onSelect={(d) => {
+                  if (d) setDate(format(d, "yyyy-MM-dd"));
+                  setCalendarOpen(false);
+                }}
+                disabled={{ before: startOfDay(new Date()) }}
+                autoFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div>
           <Label className="mb-2 flex items-center gap-2 text-sm"><Clock className="h-4 w-4 text-primary" /> Start time</Label>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-            {TIME_SLOTS.map((t) => {
-              const active = t === startTime;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setStartTime(t)}
-                  className={cn(
-                    "rounded-lg border px-2 py-2 text-sm transition-colors",
-                    active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-secondary",
-                  )}
-                >
-                  {t}
-                </button>
-              );
-            })}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Select value={isPresetTime ? startTime : ""} onValueChange={setStartTime}>
+              <SelectTrigger className="h-12 text-base">
+                <SelectValue placeholder="Choose a time slot" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                {TIME_SLOTS.map((t) => (
+                  <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              aria-label="Enter a custom start time"
+              className="h-12 text-base"
+            />
           </div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Pick a slot from the list, or tap the clock to enter your own time.
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -768,4 +777,11 @@ function addHoursToTime(start: string, hours: number) {
   const eh = Math.floor((total / 60) % 24);
   const em = total % 60;
   return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+}
+
+function formatTimeLabel(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  const period = h < 12 ? "AM" : "PM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
 }
