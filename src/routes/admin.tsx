@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format } from "date-fns";
+import { format, isToday, isThisWeek, isThisMonth } from "date-fns";
 import {
   Baby,
   CheckCircle2,
+  Download,
   Inbox,
   LayoutList,
+  LineChart,
   Menu,
   MessageCircle,
   MessageSquare,
@@ -58,7 +60,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminDashboard,
 });
 
-type View = "incoming" | "all" | "feedback";
+type View = "incoming" | "all" | "feedback" | "revenue";
 
 function digitsOnly(v: string) {
   return v.replace(/\D/g, "");
@@ -165,6 +167,12 @@ function AdminDashboard() {
                     onClick={() => go("all")}
                   />
                   <MenuItem
+                    active={view === "revenue"}
+                    icon={LineChart}
+                    label="Revenue"
+                    onClick={() => go("revenue")}
+                  />
+                  <MenuItem
                     active={view === "feedback"}
                     icon={MessageSquare}
                     label="Feedback"
@@ -179,7 +187,9 @@ function AdminDashboard() {
                 ? "Incoming requests"
                 : view === "all"
                   ? "All bookings"
-                  : "Client feedback"}
+                  : view === "revenue"
+                    ? "Revenue"
+                    : "Client feedback"}
             </div>
           </div>
           {view === "incoming" && pending.length > 0 && (
@@ -189,7 +199,9 @@ function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
-        {view === "feedback" ? (
+        {view === "revenue" ? (
+          <RevenueView bookings={bookings} />
+        ) : view === "feedback" ? (
           feedback.length === 0 ? (
             <p className="text-sm text-muted-foreground">No feedback yet.</p>
           ) : (
@@ -456,6 +468,114 @@ function StatusBadge({ status }: { status: string }) {
       {status}
     </Badge>
   );
+}
+
+function RevenueView({ bookings }: { bookings: DemoBooking[] }) {
+  // Revenue = value of non-declined bookings, by service date.
+  const active = bookings.filter((b) => b.status !== "declined");
+  const sumFor = (pred: (d: Date) => boolean) =>
+    active.filter((b) => pred(new Date(b.booking_date))).reduce((s, b) => s + b.total, 0);
+  const today = sumFor(isToday);
+  const week = sumFor((d) => isThisWeek(d, { weekStartsOn: 1 }));
+  const month = sumFor(isThisMonth);
+  const all = active.reduce((s, b) => s + b.total, 0);
+  const collected = active.reduce(
+    (s, b) => s + b.advance_paid + (b.balance_paid ? b.balance_due : 0),
+    0,
+  );
+
+  const byDay = new Map<string, { count: number; total: number }>();
+  for (const b of active) {
+    const cur = byDay.get(b.booking_date) ?? { count: 0, total: 0 };
+    cur.count += 1;
+    cur.total += b.total;
+    byDay.set(b.booking_date, cur);
+  }
+  const days = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 14);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <StatTile label="Today" value={today} />
+        <StatTile label="This week" value={week} />
+        <StatTile label="This month" value={month} />
+        <StatTile label="All time" value={all} />
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4 text-sm">
+        <span className="text-muted-foreground">Collected so far (advance + paid balances)</span>
+        <span className="font-semibold">AED {collected.toLocaleString()}</span>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium">Daily breakdown</h2>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => exportBookingsCsv(bookings)}
+          className="h-8 gap-1.5 rounded-full px-3 text-xs"
+        >
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </Button>
+      </div>
+
+      {days.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No revenue yet.</p>
+      ) : (
+        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+          {days.map(([date, d]) => (
+            <div key={date} className="flex items-center justify-between p-3 text-sm">
+              <div>
+                <div className="font-medium">{format(new Date(date), "EEE d MMM yyyy")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {d.count} booking{d.count === 1 ? "" : "s"}
+                </div>
+              </div>
+              <div className="font-semibold">AED {d.total.toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="mt-1 font-serif text-2xl font-semibold">AED {value.toLocaleString()}</div>
+    </div>
+  );
+}
+
+function csvCell(v: string) {
+  const s = String(v ?? "");
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportBookingsCsv(bookings: DemoBooking[]) {
+  const headers = [
+    "Reference", "Customer", "Phone", "Date", "Time", "Duration (hrs)", "Children",
+    "Emirate", "Address", "Status", "Assigned", "Total (AED)", "Advance (AED)",
+    "Balance (AED)", "Balance paid",
+  ];
+  const rows = bookings.map((b) => [
+    b.reference, b.customer_name, b.customer_phone, b.booking_date, b.start_time,
+    String(b.duration_hours), b.kids, b.emirate, b.address, b.status,
+    b.status === "confirmed" ? b.nanny_name : "",
+    String(b.total), String(b.advance_paid), String(b.balance_due),
+    b.balance_paid ? "yes" : "no",
+  ]);
+  const csv = [headers, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
+  // Prepend BOM so Excel reads UTF-8 correctly.
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `yalla-nanny-bookings-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function FeedbackSummary({ items }: { items: DemoFeedback[] }) {
