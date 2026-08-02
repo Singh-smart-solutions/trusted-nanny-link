@@ -17,7 +17,6 @@ import {
   ArrowRight,
   ArrowLeft,
   BadgeCheck,
-  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 
