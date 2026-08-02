@@ -6,6 +6,14 @@ This project was built with [Lovable](https://lovable.dev).
 
 **Live app**: https://trusted-nanny-link.lovable.app
 
+## Features
+
+- **Book a nanny**: calendar date picker, time dropdown / manual entry, duration and children.
+- **50% advance**: pay half to confirm; one-click remaining balance after the session.
+- **Save details & card**: opt-in to remember contact/address and a masked card for faster repeat bookings.
+- **My bookings**: customers see their own bookings, assigned nanny, and can leave feedback.
+- **Owner dashboard** (`/admin`): incoming requests, accept & assign a team member, all-bookings search, and client feedback.
+
 ## Build with Lovable
 
 Continue developing this project in the [Lovable editor](https://lovable.dev/projects/5b354510-db6a-4583-bafb-999f3a2db8e9).
